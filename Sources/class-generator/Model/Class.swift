@@ -24,7 +24,11 @@ internal class Class: ImmutableMappable {
 
     required init(map: Map) throws {
         name = try map.value(Keys.name.rawValue)
-        properties = try map.value(Keys.properties.rawValue)
+
+        // sort the properties by name if requested
+        let alphabetize = (map.context as? MappingContext)?.alphabetizeProperties == true
+        let originalProperties: [Property] = try map.value(Keys.properties.rawValue)
+        properties = alphabetize ? originalProperties.sorted { $0.name.compare($1.name) == .orderedAscending } : originalProperties
     }
 
     // MARK: - Mappable

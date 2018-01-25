@@ -18,19 +18,24 @@ internal enum ClassGeneratorError: Error {
 
 internal class ClassGenerator {
 
+    // MARK: - Public Properties
+
+    var alphabetizeProperties: Bool
+    var removeOutputFiles: Bool
+
     // MARK: - Private Properties
 
     private let inputDirectoryPath: Path
     private let outputDirectoryPath: Path
-    private let removeOutputFiles: Bool
     private let templateFilePath: Path
 
     // MARK: - Initialization
 
-    init(inputDirectory: String, outputDirectory: String, templateFile: String, removeOutputFiles: Bool?) {
+    init(inputDirectory: String, outputDirectory: String, templateFile: String) {
+        self.alphabetizeProperties = false
         self.inputDirectoryPath = Path(inputDirectory)
         self.outputDirectoryPath = Path(outputDirectory)
-        self.removeOutputFiles = removeOutputFiles ?? false
+        self.removeOutputFiles = false
         self.templateFilePath = Path(templateFile)
     }
 
@@ -116,6 +121,8 @@ internal class ClassGenerator {
 
     private func parseAllClasses() throws -> [Class] {
         var classes: [Class] = []
+        let context = MappingContext(alphabetizeProperties: alphabetizeProperties)
+        let mapper = Mapper<Class>(context: context)
 
         try inputDirectoryPath.children().forEach { inputFile in
             guard inputFile.isFile, inputFile.extension == "json" else {
@@ -124,7 +131,7 @@ internal class ClassGenerator {
             }
 
             let inputFileContents: String = try inputFile.read()
-            let inputFileClasses = try Mapper<Class>().mapArray(JSONString: inputFileContents)
+            let inputFileClasses = try mapper.mapArray(JSONString: inputFileContents)
             classes.append(contentsOf: inputFileClasses)
         }
 
