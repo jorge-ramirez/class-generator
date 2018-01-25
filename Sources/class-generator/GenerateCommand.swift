@@ -1,3 +1,4 @@
+import Foundation
 import SwiftCLI
 
 internal class GenerateCommand: SwiftCLI.Command {
@@ -9,47 +10,41 @@ internal class GenerateCommand: SwiftCLI.Command {
     private let outputDirectoryPath = Parameter()
     private let templateFilePath = Parameter()
 
+    // options
+    private let removeOutputFiles = Flag("--remove-output-files", description: "Removes any existing output files.")
+
     // MARK: - Command Protocol
 
     let name = "generate"
-    let shortDescription = "Generates an output file for each class found in the input files directory, using the given template."
+    let shortDescription = "Generates an output file for each class found in the input directory files, using the given template."
 
     func execute() throws {
         do {
-            let generator = try ClassGenerator(inputDirectory: inputDirectoryPath.value,
-                                               outputDirectory: outputDirectoryPath.value,
-                                               templateFile: templateFilePath.value)
+            let generator = ClassGenerator(inputDirectory: inputDirectoryPath.value,
+                                           outputDirectory: outputDirectoryPath.value,
+                                           templateFile: templateFilePath.value,
+                                           removeOutputFiles: removeOutputFiles.value)
             try generator.generate()
-        } catch {
-            let message = self.message(for: error)
-            print("Error: \(message)")
+        } catch ClassGeneratorError.inputDirectoryDoesNotExist {
+            NSLog("The input directory does not exist.")
+        } catch ClassGeneratorError.inputDirectoryIsEmpty {
+            NSLog("The input directory is empty.")
+        } catch ClassGeneratorError.inputDirectoryIsNotADirectory {
+            NSLog("The input directory is not a directory.")
+        } catch ClassGeneratorError.outputDirectoryIsNotADirectory {
+            NSLog("The output directory is not a directory.")
+        } catch ClassGeneratorError.outputDirectoryIsNotEmpty {
+            NSLog("The output directory is not empty.")
+        } catch ClassGeneratorError.outputDirectoryIsNotWritable {
+            NSLog("The output directory is not writable.")
+        } catch ClassGeneratorError.templateFileDoesNotExist {
+            NSLog("The template file does not exist.")
+        } catch ClassGeneratorError.templateFileIsNotAFile {
+            NSLog("The template file is not a file.")
+        } catch ClassGeneratorError.duplicateClass(let className) {
+            NSLog("Duplicate class name defined: \"\(className)\".")
+        } catch ClassGeneratorError.undefinedClass(let className) {
+            NSLog("Undefined class name used: \"\(className)\".")
         }
-    }
-
-    private func message(for error: Error) -> String {
-        let message: String
-
-        switch error {
-        case ClassGeneratorError.inputDirectoryDoesNotExist:
-            message = "The input directory does not exist"
-        case ClassGeneratorError.inputDirectoryIsEmpty:
-            message = "The input directory is empty"
-        case ClassGeneratorError.inputDirectoryIsNotADirectory:
-            message = "The input directory is not a directory"
-        case ClassGeneratorError.outputDirectoryIsNotADirectory:
-            message = "The output directory is not a directory"
-        case ClassGeneratorError.outputDirectoryIsNotEmpty:
-            message = "The output directory is not empty"
-        case ClassGeneratorError.outputDirectoryIsNotWritable:
-            message = "The output directory is not writable"
-        case ClassGeneratorError.templateFileDoesNotExist:
-            message = "The template file does not exist"
-        case ClassGeneratorError.templateFileIsNotAFile:
-            message = "The template file is not a file"
-        default:
-            message = "Unknown error"
-        }
-
-        return message
     }
 }

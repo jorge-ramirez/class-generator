@@ -7,11 +7,12 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/kylef/PathKit.git", from: "0.8.0"),
         .package(url: "https://github.com/kylef/Stencil.git", from: "0.10.1"),
-        .package(url: "https://github.com/jakeheis/SwiftCLI.git", from: "4.0.3")
+        .package(url: "https://github.com/jakeheis/SwiftCLI.git", from: "4.0.3"),
+        .package(url: "https://github.com/Hearst-DD/ObjectMapper.git", from: "3.1.0"),
     ],
     targets: [
         .target(
             name: "class-generator",
-            dependencies: ["PathKit", "Stencil", "SwiftCLI"])
+            dependencies: ["PathKit", "Stencil", "SwiftCLI", "ObjectMapper"])
     ]
 )
