@@ -7,25 +7,28 @@ internal class Property: ImmutableMappable {
 
     let name: String
     let type: Type
-    let isArray: Bool
+    let isCollection: Bool
     let isRequired: Bool
+    let description: String?
 
     // MARK: - Private Enums
 
     fileprivate enum Keys: String {
         case name
         case type
-        case isArray
+        case isCollection
         case isRequired
+        case description
     }
 
     // MARK: - Initialization
 
-    init(name: String, type: Type, isArray: Bool = false, isRequired: Bool = true) {
+    init(name: String, type: Type, isCollection: Bool = false, isRequired: Bool = true, description: String? = nil) {
         self.name = name
         self.type = type
-        self.isArray = isArray
+        self.isCollection = isCollection
         self.isRequired = isRequired
+        self.description = description
     }
 
     required init(map: Map) throws {
@@ -34,8 +37,9 @@ internal class Property: ImmutableMappable {
         let typeString: String = try map.value(Keys.type.rawValue)
         type = Type(stringValue: typeString)
 
-        isArray = (try? map.value(Keys.isArray.rawValue)) ?? false
+        isCollection = (try? map.value(Keys.isCollection.rawValue)) ?? false
         isRequired = (try? map.value(Keys.isRequired.rawValue)) ?? true
+        description = try? map.value(Keys.description.rawValue)
     }
 
     // MARK: - Mappable
@@ -46,8 +50,9 @@ internal class Property: ImmutableMappable {
         let typeString = type.stringValue()
         typeString >>> map[Keys.type.rawValue]
 
-        isArray >>> map[Keys.isArray.rawValue]
+        isCollection >>> map[Keys.isCollection.rawValue]
         isRequired >>> map[Keys.isRequired.rawValue]
+        description >>> map[Keys.description.rawValue]
     }
 
 }

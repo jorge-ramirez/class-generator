@@ -21,7 +21,7 @@ internal class ClassGenerator {
     // MARK: - Public Properties
 
     var alphabetizeProperties: Bool
-    var removeOutputFiles: Bool
+    var removeExistingFiles: Bool
 
     // MARK: - Private Properties
 
@@ -35,7 +35,7 @@ internal class ClassGenerator {
         self.alphabetizeProperties = false
         self.inputDirectoryPath = Path(inputDirectory)
         self.outputDirectoryPath = Path(outputDirectory)
-        self.removeOutputFiles = false
+        self.removeExistingFiles = false
         self.templateFilePath = Path(templateFile)
     }
 
@@ -79,28 +79,22 @@ internal class ClassGenerator {
 
             var declaration = "\(property.name): "
 
-            if property.isArray {
+            if property.isCollection {
                 declaration += "["
             }
 
             switch property.type {
-            case .bool:
-                declaration += "Bool"
-            case let .custom(customType):
-                declaration += customType
+            case .bool, .custom, .date, .double, .float, .int, .string:
+                declaration += property.type.stringValue()
             case .decimal:
-                declaration += "Double"
-            case .double:
-                declaration += "Double"
-            case .int:
-                declaration += "Int"
+                // Decimals will be represented using Doubles
+                declaration += Type.double.stringValue()
             case .long:
-                declaration += "Int"
-            case .string:
-                declaration += "String"
+                // Longs will be represented using Ints
+                declaration += Type.int.stringValue()
             }
 
-            if property.isArray {
+            if property.isCollection {
                 declaration += "]"
             }
 
@@ -164,7 +158,7 @@ internal class ClassGenerator {
         try classes.forEach {
             try $0.properties.forEach {
                 switch $0.type {
-                case .bool, .decimal, .double, .int, .long, .string:
+                case .bool, .date, .decimal, .double, .float, .int, .long, .string:
                     // primitive type, no need to validate
                     break
                 case let .custom(customTypeName):
@@ -207,7 +201,7 @@ internal class ClassGenerator {
             if !outputFiles.isEmpty {
                 // the output directory is not empty
 
-                if removeOutputFiles {
+                if removeExistingFiles {
                     // delete all of the output files in the output file directory
                     try outputFiles.forEach {
                         try $0.delete()

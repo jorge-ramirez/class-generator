@@ -12,7 +12,7 @@ internal class GenerateCommand: SwiftCLI.Command {
 
     // options
     private let alphabetizeProperties = Flag("--alphabetize-properties", description: "The generated properties are listed alphabetical order.")
-    private let removeOutputFiles = Flag("--remove-output-files", description: "Removes any existing output files.")
+    private let removeExistingFiles = Flag("--remove-existing-files", description: "Removes any existing output files before generating new ones.")
 
     // MARK: - Command Protocol
 
@@ -26,7 +26,7 @@ internal class GenerateCommand: SwiftCLI.Command {
                                            templateFile: templateFilePath.value)
 
             generator.alphabetizeProperties = alphabetizeProperties.value
-            generator.removeOutputFiles = removeOutputFiles.value
+            generator.removeExistingFiles = removeExistingFiles.value
 
             try generator.generate()
         } catch ClassGeneratorError.inputDirectoryDoesNotExist {
