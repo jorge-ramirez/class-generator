@@ -1,5 +1,7 @@
 # class-generator
 
+[![Build Status](https://travis-ci.org/jorge-ramirez/class-generator.svg?branch=master)](https://travis-ci.org/jorge-ramirez/class-generator)
+
 class-generator is a macOS command line tool which generates classes based on JSON files used to describe the classes and their properties.  It was created to help reduce the manual process of creating mapper classes used in REST service calls in iOS and macOS apps.  Since it is template based, it can be used to generate classes for any programming language.
 
 ##### JSON:
@@ -207,7 +209,7 @@ Usage: class-generator <command> [options]
 class-generator - Generate classes from JSON schemas
 
 Commands:
-  generate        Generates an output file for each class found in the input directory files, using the given template.
+  generate        Generates an output file for each class definition found in the specified schemas, using the specified template.
   help            Prints this help information
   version         Prints the current version of this app
 ```
@@ -221,23 +223,21 @@ This command will generate a class file for each class represented in the JSON s
 ```
 > class-generator generate --help
 
-Usage: class-generator generate <inputDirectoryPath> <outputDirectoryPath> <templateFilePath> [options]
+Usage: class-generator generate <schemasDirectoryPath> <templateFilePath> [options]
 
 Options:
-  --alphabetize-properties    The generated properties are listed alphabetical order.
-  --remove-existing-files     Removes any existing output files before generating new ones.
-  -h, --help                  Show help information for this command
+  --alphabetize-properties           The generated properties will be listed alphabetical order.
+  --output-directory-path <value>    The output directory where all generated files will be saved to.  A temporary directory will be used if none is provided.
+  -h, --help                         Show help information for this command
 ```
 
 ##### Example:
 
 ```
 > class-generator generate \
-  ~/Desktop/input \
-  ~/Desktop/output \
+  ~/Desktop/schemas \
   ~/Desktop/templates/swift-object-mapper.txt \
-  --alphabetize-properties \
-  --remove-existing-files
+  --alphabetize-properties
 ```
 
 This will load all of the class schemas located in the `schemas` input directory, and then use the `swift-object-mapper.txt` template to generate a file for each of the loaded classes.
@@ -287,3 +287,4 @@ You can then find the binary at `.build/debug/class-generator`.
 - [Stencil](https://github.com/kylef/Stencil.git)
 - [SwiftCLI](https://github.com/jakeheis/SwiftCLI.git)
 - [ObjectMapper](https://github.com/Hearst-DD/ObjectMapper.git)
+- [HeliumLogger](https://github.com/IBM-Swift/HeliumLogger.git)
