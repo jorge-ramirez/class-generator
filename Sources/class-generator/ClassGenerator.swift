@@ -1,19 +1,22 @@
+import AppKit
 import Foundation
+import LoggerAPI
 import ObjectMapper
 import PathKit
 import Stencil
 
 internal enum ClassGeneratorError: Error {
-    case inputDirectoryDoesNotExist
-    case inputDirectoryIsEmpty
-    case inputDirectoryIsNotADirectory
-    case outputDirectoryIsNotADirectory
-    case outputDirectoryIsNotEmpty
-    case outputDirectoryIsNotWritable
-    case templateFileDoesNotExist
-    case templateFileIsNotAFile
-    case duplicateClass(String)
-    case undefinedClass(String)
+    case duplicateClassDefined(String)
+    case outputDirectoryDoesNotSpecified
+    case outputDirectoryDoesNotExist(String)
+    case outputDirectoryIsNotADirectory(String)
+    case outputDirectoryIsNotEmpty(String)
+    case schemasDirectoryDoesNotExist(String)
+    case schemasDirectoryIsEmpty(String)
+    case schemasDirectoryIsNotADirectory(String)
+    case templateFileDoesNotExist(String)
+    case templateFileIsNotAFile(String)
+    case undefinedClassUsed(String)
 }
 
 internal class ClassGenerator {
@@ -21,31 +24,36 @@ internal class ClassGenerator {
     // MARK: - Public Properties
 
     var alphabetizeProperties: Bool
-    var removeExistingFiles: Bool
+    var outputDirectoryPath: Path?
 
     // MARK: - Private Properties
 
-    private let inputDirectoryPath: Path
-    private let outputDirectoryPath: Path
+    private let schemasDirectoryPath: Path
     private let templateFilePath: Path
 
     // MARK: - Initialization
 
-    init(inputDirectory: String, outputDirectory: String, templateFile: String) {
+    init(schemasDirectoryPath: Path, templateFilePath: Path) {
         self.alphabetizeProperties = false
-        self.inputDirectoryPath = Path(inputDirectory)
-        self.outputDirectoryPath = Path(outputDirectory)
-        self.removeExistingFiles = false
-        self.templateFilePath = Path(templateFile)
+        self.schemasDirectoryPath = schemasDirectoryPath
+        self.outputDirectoryPath = nil
+        self.templateFilePath = templateFilePath
     }
 
     // MARK: - Public Methods
 
     func generate() throws {
+        // create the output directory if necessary
+        try createOutputDirectoryIfNecessary()
+
         // validate the paths
 		try validatePaths()
 
-        // parse the classes found in the input files
+        guard let outputDirectoryPath = outputDirectoryPath else {
+            throw ClassGeneratorError.outputDirectoryDoesNotSpecified
+        }
+
+        // parse the classes found in the schema files
         let classes = try parseAllClasses()
 
         // validate the classes which were parsed
@@ -61,11 +69,16 @@ internal class ClassGenerator {
 
         // generate a class file for each class
         try classes.forEach {
+            let outputFilePath = outputDirectoryPath + Path($0.name + ".swift")
+            Log.info("Generating output file: " + outputFilePath.lastComponent)
+
             let objectDictionary = Mapper().toJSON($0)
             let output = try templateEnvironment.renderTemplate(name: templateFileName, context: objectDictionary)
-            let outputFilePath = outputDirectoryPath + Path($0.name + ".swift")
             try outputFilePath.write(output, encoding: .utf8)
         }
+
+        // open the output directory
+        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: outputDirectoryPath.absolute().string)
     }
 
     // MARK: - Private Methods
@@ -106,6 +119,17 @@ internal class ClassGenerator {
         }
     }
 
+    private func createOutputDirectoryIfNecessary() throws {
+        guard outputDirectoryPath == nil else {
+            return
+        }
+
+        let tempDirectory = try Path.uniqueTemporary()
+        outputDirectoryPath = tempDirectory
+
+        Log.info("Created temporary output directory: " + tempDirectory.absolute().string)
+    }
+
     private func createTemplateExtensions() -> [Extension] {
         let templateExtension = Extension()
         addSwiftPropertyDeclarationFilter(to: templateExtension)
@@ -118,15 +142,16 @@ internal class ClassGenerator {
         let context = MappingContext(alphabetizeProperties: alphabetizeProperties)
         let mapper = Mapper<Class>(context: context)
 
-        try inputDirectoryPath.children().forEach { inputFile in
-            guard inputFile.isFile, inputFile.extension == "json" else {
-                NSLog("Skipping input file: \(inputFile.lastComponent)")
+        try schemasDirectoryPath.children().forEach { schemaFile in
+            guard schemaFile.isFile, schemaFile.extension == "json" else {
+                Log.warning("Skipping unknown schema file type: \(schemaFile.lastComponent)")
                 return
             }
 
-            let inputFileContents: String = try inputFile.read()
-            let inputFileClasses = try mapper.mapArray(JSONString: inputFileContents)
-            classes.append(contentsOf: inputFileClasses)
+            Log.info("Parsing schema file: " + schemaFile.lastComponent)
+            let schemaFileContents: String = try schemaFile.read()
+            let schemaFileClasses = try mapper.mapArray(JSONString: schemaFileContents)
+            classes.append(contentsOf: schemaFileClasses)
         }
 
         return classes
@@ -148,7 +173,8 @@ internal class ClassGenerator {
         // store the classes into the dictionary by name, throw an error when a duplicate class is found
         try classes.forEach {
             guard classNameToClassDict[$0.name] == nil else {
-                throw ClassGeneratorError.duplicateClass($0.name)
+                Log.error("Duplicate class name defined: " + $0.name)
+                throw ClassGeneratorError.duplicateClassDefined($0.name)
             }
 
             classNameToClassDict[$0.name] = $0
@@ -164,73 +190,82 @@ internal class ClassGenerator {
                 case let .custom(customTypeName):
                     // ensure the custom type name has been defined
                     if classNameToClassDict[customTypeName] == nil {
-                        throw ClassGeneratorError.undefinedClass(customTypeName)
+                        Log.error("Undefined class name used: " + customTypeName)
+                        throw ClassGeneratorError.undefinedClassUsed(customTypeName)
                     }
                 }
             }
-        }
-    }
-
-    private func validateInputDirectoryPath() throws {
-        // ensure the input directory exists
-        guard inputDirectoryPath.exists else {
-            throw ClassGeneratorError.inputDirectoryDoesNotExist
-        }
-
-        // ensure the input directory is a directory
-        guard inputDirectoryPath.isDirectory else {
-            throw ClassGeneratorError.inputDirectoryIsNotADirectory
-        }
-
-        // ensure the input directory is not empty
-        guard try !inputDirectoryPath.children().isEmpty else {
-            throw ClassGeneratorError.inputDirectoryIsEmpty
         }
     }
 
     private func validateOutputDirectoryPath() throws {
-        // if the output directory exists
-        if outputDirectoryPath.exists {
-            // ensure the output directory is a directory
-            guard outputDirectoryPath.isDirectory else {
-                throw ClassGeneratorError.outputDirectoryIsNotADirectory
-            }
+        guard let outputDirectoryPath = outputDirectoryPath else {
+            Log.error("No output directory was specified.")
+            throw ClassGeneratorError.outputDirectoryDoesNotSpecified
+        }
 
-            let outputFiles = try outputDirectoryPath.children()
+        let absolutePath = outputDirectoryPath.absolute().string
 
-            if !outputFiles.isEmpty {
-                // the output directory is not empty
+        // ensure the output directory exists
+        guard outputDirectoryPath.exists else {
+            Log.error("The output directory specified does not exist: " + absolutePath)
+            throw ClassGeneratorError.outputDirectoryDoesNotExist(absolutePath)
+        }
 
-                if removeExistingFiles {
-                    // delete all of the output files in the output file directory
-                    try outputFiles.forEach {
-                        try $0.delete()
-                    }
-                } else {
-                    throw ClassGeneratorError.outputDirectoryIsNotEmpty
-                }
-            }
-        } else {
-            // create the output directory
-            try outputDirectoryPath.mkpath()
+        // ensure the output directory is a directory
+        guard outputDirectoryPath.isDirectory else {
+            Log.error("The output directory specified is not a directory: " + absolutePath)
+            throw ClassGeneratorError.outputDirectoryIsNotADirectory(absolutePath)
+        }
+
+        // ensure the output directory is empty
+        guard try outputDirectoryPath.children().isEmpty else {
+            Log.error("The output directory specified is not empty: " + absolutePath)
+            throw ClassGeneratorError.outputDirectoryIsNotEmpty(absolutePath)
         }
     }
 
     private func validatePaths() throws {
-        try validateInputDirectoryPath()
         try validateOutputDirectoryPath()
+        try validateSchemasDirectoryPath()
         try validateTemplateFilePath()
     }
 
+    private func validateSchemasDirectoryPath() throws {
+        let absolutePath = schemasDirectoryPath.absolute().string
+
+        // ensure the schemas directory exists
+        guard schemasDirectoryPath.exists else {
+            Log.error("The schemas directory specified does not exist: " + absolutePath)
+            throw ClassGeneratorError.schemasDirectoryDoesNotExist(absolutePath)
+        }
+
+        // ensure the schemas directory is a directory
+        guard schemasDirectoryPath.isDirectory else {
+            Log.error("The schemas directory specified is not a directory: " + absolutePath)
+            throw ClassGeneratorError.schemasDirectoryIsNotADirectory(absolutePath)
+        }
+
+        // ensure the schemas directory is not empty
+        guard try !schemasDirectoryPath.children().isEmpty else {
+            Log.error("The schemas directory specified is empty: " + absolutePath)
+            throw ClassGeneratorError.schemasDirectoryIsEmpty(absolutePath)
+        }
+    }
+
     private func validateTemplateFilePath() throws {
+        let absolutePath = templateFilePath.absolute().string
+
         // ensure the template file exists
         guard templateFilePath.exists else {
-            throw ClassGeneratorError.templateFileDoesNotExist
+            Log.error("The template file specified does not exist: " + absolutePath)
+            throw ClassGeneratorError.templateFileDoesNotExist(absolutePath)
         }
 
         // ensure the template file is a file
         guard templateFilePath.isFile else {
-            throw ClassGeneratorError.templateFileIsNotAFile
+            Log.error("The template file specified is not a file: " + absolutePath)
+            throw ClassGeneratorError.templateFileIsNotAFile(absolutePath)
         }
     }
 
