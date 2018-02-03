@@ -7,10 +7,10 @@ import Stencil
 
 internal enum ClassGeneratorError: Error {
     case duplicateClassDefined(String)
-    case outputDirectoryDoesNotSpecified
     case outputDirectoryDoesNotExist(String)
     case outputDirectoryIsNotADirectory(String)
     case outputDirectoryIsNotEmpty(String)
+    case outputDirectoryWasNotSpecified
     case schemasDirectoryDoesNotExist(String)
     case schemasDirectoryIsEmpty(String)
     case schemasDirectoryIsNotADirectory(String)
@@ -25,6 +25,7 @@ internal class ClassGenerator {
 
     var alphabetizeProperties: Bool
     var outputDirectoryPath: Path?
+    var preDefinedTypes: Set<String>
 
     // MARK: - Private Properties
 
@@ -37,6 +38,7 @@ internal class ClassGenerator {
         self.alphabetizeProperties = false
         self.schemasDirectoryPath = schemasDirectoryPath
         self.outputDirectoryPath = nil
+        self.preDefinedTypes = ["Bool", "Date", "Decimal", "Double", "Float", "Int", "Long", "String"]
         self.templateFilePath = templateFilePath
     }
 
@@ -50,7 +52,7 @@ internal class ClassGenerator {
 		try validatePaths()
 
         guard let outputDirectoryPath = outputDirectoryPath else {
-            throw ClassGeneratorError.outputDirectoryDoesNotSpecified
+            throw ClassGeneratorError.outputDirectoryWasNotSpecified
         }
 
         // parse the classes found in the schema files
@@ -62,19 +64,22 @@ internal class ClassGenerator {
         // extract the template directory path and template file name
         let (templateDirectoryPath, templateFileName) = templateDirectoryPathAndFileName()
 
-        // create the template extension and environment
-        let templateExtensions = createTemplateExtensions()
-        let templateEnvironment = Environment(loader: FileSystemLoader(paths: [templateDirectoryPath]),
-                                              extensions: templateExtensions)
+        // create the template environment
+        let templateEnvironment = Environment(loader: FileSystemLoader(paths: [templateDirectoryPath]))
 
         // generate a class file for each class
         try classes.forEach {
             let outputFilePath = outputDirectoryPath + Path($0.name + ".swift")
             Log.info("Generating output file: " + outputFilePath.lastComponent)
 
-            let objectDictionary = Mapper().toJSON($0)
-            let output = try templateEnvironment.renderTemplate(name: templateFileName, context: objectDictionary)
-            try outputFilePath.write(output, encoding: .utf8)
+            do {
+                let objectDictionary = Mapper().toJSON($0)
+                let output = try templateEnvironment.renderTemplate(name: templateFileName, context: objectDictionary)
+                try outputFilePath.write(output, encoding: .utf8)
+            } catch let error as TemplateSyntaxError {
+                Log.error("Template syntax error: " + error.description)
+                throw error
+            }
         }
 
         // open the output directory
@@ -82,42 +87,6 @@ internal class ClassGenerator {
     }
 
     // MARK: - Private Methods
-
-    private func addSwiftPropertyDeclarationFilter(to templateExtension: Extension) {
-        templateExtension.registerFilter("swiftPropertyDeclaration") { (value: Any?) in
-            guard let propertyJSON = value as? [String: Any],
-                let property = (try? Mapper<Property>().map(JSON: propertyJSON)) else {
-                return value
-            }
-
-            var declaration = "\(property.name): "
-
-            if property.isCollection {
-                declaration += "["
-            }
-
-            switch property.type {
-            case .bool, .custom, .date, .double, .float, .int, .string:
-                declaration += property.type.stringValue()
-            case .decimal:
-                // Decimals will be represented using Doubles
-                declaration += Type.double.stringValue()
-            case .long:
-                // Longs will be represented using Ints
-                declaration += Type.int.stringValue()
-            }
-
-            if property.isCollection {
-                declaration += "]"
-            }
-
-            if !property.isRequired {
-                declaration += "?"
-            }
-
-            return declaration
-        }
-    }
 
     private func createOutputDirectoryIfNecessary() throws {
         guard outputDirectoryPath == nil else {
@@ -128,13 +97,6 @@ internal class ClassGenerator {
         outputDirectoryPath = tempDirectory
 
         Log.info("Created temporary output directory: " + tempDirectory.absolute().string)
-    }
-
-    private func createTemplateExtensions() -> [Extension] {
-        let templateExtension = Extension()
-        addSwiftPropertyDeclarationFilter(to: templateExtension)
-
-        return [templateExtension]
     }
 
     private func parseAllClasses() throws -> [Class] {
@@ -183,16 +145,9 @@ internal class ClassGenerator {
         // ensure all of the specified property types exist
         try classes.forEach {
             try $0.properties.forEach {
-                switch $0.type {
-                case .bool, .date, .decimal, .double, .float, .int, .long, .string:
-                    // primitive type, no need to validate
-                    break
-                case let .custom(customTypeName):
-                    // ensure the custom type name has been defined
-                    if classNameToClassDict[customTypeName] == nil {
-                        Log.error("Undefined class name used: " + customTypeName)
-                        throw ClassGeneratorError.undefinedClassUsed(customTypeName)
-                    }
+                if classNameToClassDict[$0.rawType] == nil && !preDefinedTypes.contains($0.rawType) {
+                    Log.error("Undefined class name used: " + $0.rawType)
+                    throw ClassGeneratorError.undefinedClassUsed($0.rawType)
                 }
             }
         }
@@ -201,7 +156,7 @@ internal class ClassGenerator {
     private func validateOutputDirectoryPath() throws {
         guard let outputDirectoryPath = outputDirectoryPath else {
             Log.error("No output directory was specified.")
-            throw ClassGeneratorError.outputDirectoryDoesNotSpecified
+            throw ClassGeneratorError.outputDirectoryWasNotSpecified
         }
 
         let absolutePath = outputDirectoryPath.absolute().string
