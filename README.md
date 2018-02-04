@@ -12,7 +12,7 @@ The input JSON files should consist of an array of class objects:
 
 ```
 {
-    "name": "UsersResponse", // String: The name of the class (this will also be the name of the file that is generated)
+    "name": "Foo", // String: The name of the class (this will also be the name of the file that is generated)
     "properties": [] // Array: Array of Property objects (see below)
 }
 ```
@@ -22,12 +22,14 @@ The input JSON files should consist of an array of class objects:
 ```
 {
     "name": "Foo", // String: The name of the property (Required)
-    "type": "String", // String: The data type of the property (Bool, Date, Decimal, Double, Float, Int, Long, String or user-defined) (Required)
-    "isRequired": true, // Bool: Whether or not the property is required.  (True by default) 
-    "isCollection": false, // Bool: Whether or not the property is a collection (an array of 'type' objects').  (False by default) 
-    "description": "" // String: A short description of the property.  This can be used in the tempalte. (Null by default)
+    "type": "String", // String: The data type of the property, including whether it is a collection and whether it is optional (Required)
+    "description": "" // String: An optional description of the property. (Null by default)
 },
 ```
+
+##### Type Definitions:
+
+Aside from the raw data type, the type definition can also specify whether the property is a collection and whether it's optional. To specify a collection, surround the type name with square brackets. For example, an array of Strings would be specified as `[String]`. To specify an optional, add a question mark at the end of the type definition.  For example, an optional String would be specified as `String?`.
 
 ##### Example JSON (UserResponse.json):
 
@@ -36,7 +38,7 @@ The input JSON files should consist of an array of class objects:
     {
         "name": "UsersResponse",
         "properties": [
-            { "name": "users", "type": "User", "isCollection": true }
+            { "name": "users", "type": "[User]" }
         ]
     },
     {
@@ -44,15 +46,15 @@ The input JSON files should consist of an array of class objects:
         "properties": [
             { "name": "firstName", "type": "String" },
             { "name": "lastName", "type": "String" },
-            { "name": "age", "type": "Int", "isRequired": false },
-            { "name": "address", "type": "Address", "isRequired": false }
+            { "name": "age", "type": "Int?" },
+            { "name": "address", "type": "Address?" }
         ]
     },
     {
         "name": "Address",
         "properties": [
             { "name": "streetAddress1", "type": "String" },
-            { "name": "streetAddress2", "type": "String", "isRequired": false },
+            { "name": "streetAddress2", "type": "String?" },
             { "name": "city", "type": "String" },
             { "name": "state", "type": "String" },
             { "name": "zipcode", "type": "Int" }
@@ -75,7 +77,7 @@ internal class {{ name }}: ImmutableMappable {
 
     // MARK: - Public Properties
     {% for property in properties %}
-    let {{ property|swiftPropertyDeclaration }}{% endfor %}
+    let {{ property.name }}: {{ property.rawType }}{% endfor %}
 
     // MARK: - Private Enums
 
@@ -85,7 +87,7 @@ internal class {{ name }}: ImmutableMappable {
 
     // MARK: - Initialization
 
-    init({% for property in properties %}{{ property|swiftPropertyDeclaration }}{% if not forloop.last %},
+    init({% for property in properties %}{{ property.name }}: {{ property.rawType }}{% if not forloop.last %},
          {% endif %}{% endfor %}) { {% for property in properties %}
         self.{{ property.name }} = {{ property.name }}{% endfor %}
     }
