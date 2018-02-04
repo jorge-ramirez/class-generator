@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import JavaScriptCore
 import LoggerAPI
 import ObjectMapper
 import PathKit
@@ -11,6 +12,9 @@ internal enum ClassGeneratorError: Error {
     case outputDirectoryIsNotADirectory(String)
     case outputDirectoryIsNotEmpty(String)
     case outputDirectoryWasNotSpecified
+    case pluginDirectoryDoesNotExist(String)
+    case pluginDirectoryIsEmpty(String)
+    case pluginDirectoryIsNotADirectory(String)
     case schemasDirectoryDoesNotExist(String)
     case schemasDirectoryIsEmpty(String)
     case schemasDirectoryIsNotADirectory(String)
@@ -25,20 +29,26 @@ internal class ClassGenerator {
 
     var alphabetizeProperties: Bool
     var outputDirectoryPath: Path?
+    var pluginDirectoryPath: Path?
     var preDefinedTypes: Set<String>
 
     // MARK: - Private Properties
 
+    private let javaScriptContext: JSContext
     private let schemasDirectoryPath: Path
+    private let templateExtension: Extension
     private let templateFilePath: Path
 
     // MARK: - Initialization
 
     init(schemasDirectoryPath: Path, templateFilePath: Path) {
         self.alphabetizeProperties = false
-        self.schemasDirectoryPath = schemasDirectoryPath
+        self.javaScriptContext = JSContext()
         self.outputDirectoryPath = nil
+        self.pluginDirectoryPath = nil
         self.preDefinedTypes = ["Bool", "Date", "Decimal", "Double", "Float", "Int", "Long", "String"]
+        self.schemasDirectoryPath = schemasDirectoryPath
+        self.templateExtension = Extension()
         self.templateFilePath = templateFilePath
     }
 
@@ -55,6 +65,10 @@ internal class ClassGenerator {
             throw ClassGeneratorError.outputDirectoryWasNotSpecified
         }
 
+        // load the plugins
+        try configureJavaScriptContext()
+        try loadPlugins()
+
         // parse the classes found in the schema files
         let classes = try parseAllClasses()
 
@@ -65,7 +79,8 @@ internal class ClassGenerator {
         let (templateDirectoryPath, templateFileName) = templateDirectoryPathAndFileName()
 
         // create the template environment
-        let templateEnvironment = Environment(loader: FileSystemLoader(paths: [templateDirectoryPath]))
+        let templateLoader = FileSystemLoader(paths: [templateDirectoryPath])
+        let templateEnvironment = Environment(loader: templateLoader, extensions: [templateExtension])
 
         // generate a class file for each class
         try classes.forEach {
@@ -104,14 +119,14 @@ internal class ClassGenerator {
         let context = MappingContext(alphabetizeProperties: alphabetizeProperties)
         let mapper = Mapper<Class>(context: context)
 
-        try schemasDirectoryPath.children().forEach { schemaFile in
-            guard schemaFile.isFile, schemaFile.extension == "json" else {
-                Log.warning("Skipping unknown schema file type: \(schemaFile.lastComponent)")
+        try schemasDirectoryPath.children().forEach { schemaFilePath in
+            guard schemaFilePath.isFile, schemaFilePath.extension == "json" else {
+                Log.warning("Skipping unknown schema file type: \(schemaFilePath.lastComponent)")
                 return
             }
 
-            Log.info("Parsing schema file: " + schemaFile.lastComponent)
-            let schemaFileContents: String = try schemaFile.read()
+            Log.info("Parsing schema file: " + schemaFilePath.lastComponent)
+            let schemaFileContents: String = try schemaFilePath.read()
             let schemaFileClasses = try mapper.mapArray(JSONString: schemaFileContents)
             classes.append(contentsOf: schemaFileClasses)
         }
@@ -123,7 +138,6 @@ internal class ClassGenerator {
         var templateDirectoryComponents = templateFilePath.components
         _ = templateDirectoryComponents.popLast()
         let templateDirectoryPath = Path(components: templateDirectoryComponents)
-
         let templateFileName = templateFilePath.lastComponent
 
         return (templateDirectoryPath: templateDirectoryPath, templateFileName: templateFileName)
@@ -181,9 +195,10 @@ internal class ClassGenerator {
     }
 
     private func validatePaths() throws {
-        try validateOutputDirectoryPath()
         try validateSchemasDirectoryPath()
         try validateTemplateFilePath()
+        try validateOutputDirectoryPath()
+        try validatePluginDirectoryPath()
     }
 
     private func validateSchemasDirectoryPath() throws {
@@ -221,6 +236,142 @@ internal class ClassGenerator {
         guard templateFilePath.isFile else {
             Log.error("The template file specified is not a file: " + absolutePath)
             throw ClassGeneratorError.templateFileIsNotAFile(absolutePath)
+        }
+    }
+
+}
+
+// MARK: - JavaScript Plugins
+
+extension ClassGenerator {
+
+    fileprivate func configureJavaScriptContext() throws {
+        // configure an exception handler
+        javaScriptContext.exceptionHandler = { context, exception in
+            if let exceptionString = exception?.toString() {
+                Log.error("Plugin Exception: " + exceptionString)
+                exit(1)
+            }
+        }
+
+        // expose the registerFilter method to JavaScript
+        let registerFilterHandler: @convention(block) (String, String, String) -> Void
+        registerFilterHandler = { [weak self] filterName, functionName, type in
+            self?.registerJavaScriptFilter(filterName: filterName, functionName: functionName, type: type)
+        }
+        let registerFilterHandlerObject = unsafeBitCast(registerFilterHandler, to: AnyObject.self)
+        javaScriptContext.setObject(registerFilterHandlerObject,
+                                    forKeyedSubscript: "registerFilter" as (NSCopying & NSObjectProtocol)!)
+        _ = javaScriptContext.evaluateScript("registerFilter")
+
+        // expose the registerTag method to JavaScript
+        let registerTagHandler: @convention(block) (String, String) -> Void
+        registerTagHandler = { [weak self] tagName, functionName in
+            self?.registerJavaScriptTag(tagName: tagName, functionName: functionName)
+        }
+        let registerTagHandlerObject = unsafeBitCast(registerTagHandler, to: AnyObject.self)
+        javaScriptContext.setObject(registerTagHandlerObject,
+                                    forKeyedSubscript: "registerTag" as (NSCopying & NSObjectProtocol)!)
+        _ = javaScriptContext.evaluateScript("registerTag")
+    }
+
+    fileprivate func convert(_ javaScriptValue: JSValue?, javaScriptType: String) -> Any? {
+        switch javaScriptType {
+        case "array":
+            return javaScriptValue?.toArray()
+        case "boolean":
+            return javaScriptValue?.toBool()
+        case "date":
+            return javaScriptValue?.toDate()
+        case "number":
+            return javaScriptValue?.toNumber()
+        case "object":
+            return javaScriptValue?.toDictionary()
+        case "string":
+            return javaScriptValue?.toString()
+        default:
+            Log.error("Unknown JavaScript type: " + javaScriptType)
+            return javaScriptValue?.toString()
+        }
+    }
+
+    fileprivate func loadPlugins() throws {
+        guard let pluginDirectoryPath = pluginDirectoryPath else {
+            return
+        }
+
+        try pluginDirectoryPath.children().forEach { pluginFilePath in
+            guard pluginFilePath.isFile, pluginFilePath.extension == "js" else {
+                Log.warning("Skipping unknown plugin file type: \(pluginFilePath.lastComponent)")
+                return
+            }
+
+            Log.info("Loading plugin: " + pluginFilePath.lastComponent)
+            let pluginFileContents: String = try pluginFilePath.read()
+            _ = javaScriptContext.evaluateScript(pluginFileContents)
+        }
+    }
+
+    fileprivate func registerJavaScriptFilter(filterName: String, functionName: String, type: String) {
+        Log.info("Registering JavaScript filter: " + filterName)
+
+        templateExtension.registerFilter(filterName) { [weak self] value in
+            guard let javaScriptFunction = self?.javaScriptContext.objectForKeyedSubscript(functionName) else {
+                Log.error("Could not find JavaScript filter function: " + functionName)
+                throw TemplateSyntaxError("Could not find JavaScript filter function: " + functionName)
+            }
+
+            var args: [Any] = []
+            if let value = value {
+                args.append(value)
+            }
+
+            let javaScriptValue = javaScriptFunction.call(withArguments: args)
+            return self?.convert(javaScriptValue, javaScriptType: type)
+        }
+    }
+
+    fileprivate func registerJavaScriptTag(tagName: String, functionName: String) {
+        Log.info("Registering JavaScript tag: " + tagName)
+
+        templateExtension.registerSimpleTag(tagName) { [weak self] context in
+            guard let javaScriptFunction = self?.javaScriptContext.objectForKeyedSubscript(functionName) else {
+                Log.error("Could not find JavaScript tag function: " + functionName)
+                throw TemplateSyntaxError("Could not find JavaScript tag function: " + functionName)
+            }
+
+            guard let javaScriptValue = javaScriptFunction.call(withArguments: [context.flatten()]),
+                    let value = javaScriptValue.toString() else {
+                throw TemplateSyntaxError("Error while calling JavaScript tag function: " + functionName)
+            }
+
+            return value
+        }
+    }
+
+    fileprivate func validatePluginDirectoryPath() throws {
+        guard let pluginDirectoryPath = pluginDirectoryPath else {
+            return
+        }
+
+        let absolutePath = pluginDirectoryPath.absolute().string
+
+        // ensure the plugin directory exists
+        guard pluginDirectoryPath.exists else {
+            Log.error("The plugin directory specified does not exist: " + absolutePath)
+            throw ClassGeneratorError.pluginDirectoryDoesNotExist(absolutePath)
+        }
+
+        // ensure the plugin directory is a directory
+        guard pluginDirectoryPath.isDirectory else {
+            Log.error("The plugin directory specified is not a directory: " + absolutePath)
+            throw ClassGeneratorError.pluginDirectoryIsNotADirectory(absolutePath)
+        }
+
+        // ensure the plugin directory is not empty
+        guard try !pluginDirectoryPath.children().isEmpty else {
+            Log.error("The plugin directory specified is empty: " + absolutePath)
+            throw ClassGeneratorError.pluginDirectoryIsEmpty(absolutePath)
         }
     }
 
