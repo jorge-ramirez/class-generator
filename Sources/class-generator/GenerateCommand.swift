@@ -14,7 +14,7 @@ internal class GenerateCommand: SwiftCLI.Command {
     // options
     private let alphabetizeProperties = Flag("--alphabetize-properties", description: "The generated properties will be listed alphabetical order.")
     private let outputDirectoryPath = Key<String>("--output-directory-path", description: "The output directory where all generated files will be saved to.  A temporary directory will be used if none is provided.")
-    private let pluginDirectoryPath = Key<String>("--plugin-directory-path", description: "A directory containing plugins which will be loaded at runtime.")
+    private let pluginsDirectoryPath = Key<String>("--plugins-directory-path", description: "A directory containing plugins which will be loaded at runtime.")
 
     // MARK: - Command Protocol
 
@@ -31,8 +31,8 @@ internal class GenerateCommand: SwiftCLI.Command {
             generator.outputDirectoryPath = Path(outputDirectoryPath)
         }
 
-        if let pluginDirectoryPath = pluginDirectoryPath.value {
-            generator.pluginDirectoryPath = Path(pluginDirectoryPath)
+        if let pluginsDirectoryPath = pluginsDirectoryPath.value {
+            generator.pluginsDirectoryPath = Path(pluginsDirectoryPath)
         }
 
         try generator.generate()

@@ -12,9 +12,9 @@ internal enum ClassGeneratorError: Error {
     case outputDirectoryIsNotADirectory(String)
     case outputDirectoryIsNotEmpty(String)
     case outputDirectoryWasNotSpecified
-    case pluginDirectoryDoesNotExist(String)
-    case pluginDirectoryIsEmpty(String)
-    case pluginDirectoryIsNotADirectory(String)
+    case pluginsDirectoryDoesNotExist(String)
+    case pluginsDirectoryIsEmpty(String)
+    case pluginsDirectoryIsNotADirectory(String)
     case schemasDirectoryDoesNotExist(String)
     case schemasDirectoryIsEmpty(String)
     case schemasDirectoryIsNotADirectory(String)
@@ -29,12 +29,12 @@ internal class ClassGenerator {
 
     var alphabetizeProperties: Bool
     var outputDirectoryPath: Path?
-    var pluginDirectoryPath: Path?
-    var preDefinedTypes: Set<String>
+    var pluginsDirectoryPath: Path?
 
     // MARK: - Private Properties
 
     private let javaScriptContext: JSContext
+    private var preDefinedTypes: Set<String>
     private let schemasDirectoryPath: Path
     private let templateExtension: Extension
     private let templateFilePath: Path
@@ -45,8 +45,8 @@ internal class ClassGenerator {
         self.alphabetizeProperties = false
         self.javaScriptContext = JSContext()
         self.outputDirectoryPath = nil
-        self.pluginDirectoryPath = nil
-        self.preDefinedTypes = ["Bool", "Date", "Decimal", "Double", "Float", "Int", "Long", "String"]
+        self.pluginsDirectoryPath = nil
+        self.preDefinedTypes = []
         self.schemasDirectoryPath = schemasDirectoryPath
         self.templateExtension = Extension()
         self.templateFilePath = templateFilePath
@@ -198,7 +198,7 @@ internal class ClassGenerator {
         try validateSchemasDirectoryPath()
         try validateTemplateFilePath()
         try validateOutputDirectoryPath()
-        try validatePluginDirectoryPath()
+        try validatePluginsDirectoryPath()
     }
 
     private func validateSchemasDirectoryPath() throws {
@@ -245,7 +245,11 @@ internal class ClassGenerator {
 
 extension ClassGenerator {
 
-    fileprivate func configureJavaScriptContext() throws {
+    private func classGenLog(_ message: String) {
+        Log.info(message)
+    }
+
+    private func configureJavaScriptContext() throws {
         // configure an exception handler
         javaScriptContext.exceptionHandler = { context, exception in
             if let exceptionString = exception?.toString() {
@@ -253,6 +257,25 @@ extension ClassGenerator {
                 exit(1)
             }
         }
+
+        // expose the classGenLog method to JavaScript
+        let javaScriptLogHandler: @convention(block) (String) -> Void = { [weak self] message in
+            self?.classGenLog(message)
+        }
+        let javaScriptLogHandlerObject = unsafeBitCast(javaScriptLogHandler, to: AnyObject.self)
+        javaScriptContext.setObject(javaScriptLogHandlerObject,
+                                    forKeyedSubscript: "classGenLog" as (NSCopying & NSObjectProtocol)!)
+        _ = javaScriptContext.evaluateScript("classGenLog")
+
+        // expose the registerPreDefinedTypes method to JavaScript
+        let registerPreDefinedTypesHandler: @convention(block) ([String]) -> Void
+        registerPreDefinedTypesHandler = { [weak self] types in
+            self?.registerPreDefinedTypes(types)
+        }
+        let registerPreDefinedTypesHandlerObject = unsafeBitCast(registerPreDefinedTypesHandler, to: AnyObject.self)
+        javaScriptContext.setObject(registerPreDefinedTypesHandlerObject,
+                                    forKeyedSubscript: "registerPreDefinedTypes" as (NSCopying & NSObjectProtocol)!)
+        _ = javaScriptContext.evaluateScript("registerPreDefinedTypes")
 
         // expose the registerFilter method to JavaScript
         let registerFilterHandler: @convention(block) (String, String, String) -> Void
@@ -275,7 +298,7 @@ extension ClassGenerator {
         _ = javaScriptContext.evaluateScript("registerTag")
     }
 
-    fileprivate func convert(_ javaScriptValue: JSValue?, javaScriptType: String) -> Any? {
+    private func convert(_ javaScriptValue: JSValue?, javaScriptType: String) -> Any? {
         switch javaScriptType {
         case "array":
             return javaScriptValue?.toArray()
@@ -295,12 +318,12 @@ extension ClassGenerator {
         }
     }
 
-    fileprivate func loadPlugins() throws {
-        guard let pluginDirectoryPath = pluginDirectoryPath else {
+    private func loadPlugins() throws {
+        guard let pluginsDirectoryPath = pluginsDirectoryPath else {
             return
         }
 
-        try pluginDirectoryPath.children().forEach { pluginFilePath in
+        try pluginsDirectoryPath.children().forEach { pluginFilePath in
             guard pluginFilePath.isFile, pluginFilePath.extension == "js" else {
                 Log.warning("Skipping unknown plugin file type: \(pluginFilePath.lastComponent)")
                 return
@@ -312,7 +335,7 @@ extension ClassGenerator {
         }
     }
 
-    fileprivate func registerJavaScriptFilter(filterName: String, functionName: String, type: String) {
+    private func registerJavaScriptFilter(filterName: String, functionName: String, type: String) {
         Log.info("Registering JavaScript filter: " + filterName)
 
         templateExtension.registerFilter(filterName) { [weak self] value in
@@ -331,7 +354,7 @@ extension ClassGenerator {
         }
     }
 
-    fileprivate func registerJavaScriptTag(tagName: String, functionName: String) {
+    private func registerJavaScriptTag(tagName: String, functionName: String) {
         Log.info("Registering JavaScript tag: " + tagName)
 
         templateExtension.registerSimpleTag(tagName) { [weak self] context in
@@ -349,29 +372,34 @@ extension ClassGenerator {
         }
     }
 
-    fileprivate func validatePluginDirectoryPath() throws {
-        guard let pluginDirectoryPath = pluginDirectoryPath else {
+    private func registerPreDefinedTypes(_ typeNames: [String]) {
+        Log.info("Registering pre-defined types: \(typeNames)")
+        preDefinedTypes = Set<String>(typeNames)
+    }
+
+    private func validatePluginsDirectoryPath() throws {
+        guard let pluginsDirectoryPath = pluginsDirectoryPath else {
             return
         }
 
-        let absolutePath = pluginDirectoryPath.absolute().string
+        let absolutePath = pluginsDirectoryPath.absolute().string
 
-        // ensure the plugin directory exists
-        guard pluginDirectoryPath.exists else {
+        // ensure the plugins directory exists
+        guard pluginsDirectoryPath.exists else {
             Log.error("The plugin directory specified does not exist: " + absolutePath)
-            throw ClassGeneratorError.pluginDirectoryDoesNotExist(absolutePath)
+            throw ClassGeneratorError.pluginsDirectoryDoesNotExist(absolutePath)
         }
 
-        // ensure the plugin directory is a directory
-        guard pluginDirectoryPath.isDirectory else {
+        // ensure the plugins directory is a directory
+        guard pluginsDirectoryPath.isDirectory else {
             Log.error("The plugin directory specified is not a directory: " + absolutePath)
-            throw ClassGeneratorError.pluginDirectoryIsNotADirectory(absolutePath)
+            throw ClassGeneratorError.pluginsDirectoryIsNotADirectory(absolutePath)
         }
 
-        // ensure the plugin directory is not empty
-        guard try !pluginDirectoryPath.children().isEmpty else {
+        // ensure the plugins directory is not empty
+        guard try !pluginsDirectoryPath.children().isEmpty else {
             Log.error("The plugin directory specified is empty: " + absolutePath)
-            throw ClassGeneratorError.pluginDirectoryIsEmpty(absolutePath)
+            throw ClassGeneratorError.pluginsDirectoryIsEmpty(absolutePath)
         }
     }
 

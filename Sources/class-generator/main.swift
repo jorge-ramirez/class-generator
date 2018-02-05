@@ -2,10 +2,17 @@ import HeliumLogger
 import LoggerAPI
 import SwiftCLI
 
-// setup logging
+// build the log format: "[date] [type] message"
+let logFormat = "[%@] [%@] %@"
+let logFormatValues: [HeliumLoggerFormatValues] = [.date, .logType, .message]
+let logFormatArgs = logFormatValues.map { $0.rawValue }
+
+// create the logger
 let logger = HeliumLogger(.info)
 logger.colored = true
-logger.format = "[(%date)] [(%type)] (%msg)"
+logger.format = String(format: logFormat, arguments: logFormatArgs)
+
+// set the logger
 Log.logger = logger
 
 // setup the command line interface
