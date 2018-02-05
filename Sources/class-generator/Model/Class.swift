@@ -10,7 +10,7 @@ internal class Class: ImmutableMappable {
 
     // MARK: - Private Enums
 
-    fileprivate enum Keys: String {
+    private enum Keys: String {
         case name
         case properties
     }
