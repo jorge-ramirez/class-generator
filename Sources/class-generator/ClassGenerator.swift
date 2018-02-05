@@ -245,6 +245,10 @@ internal class ClassGenerator {
 
 extension ClassGenerator {
 
+    private func classGenLog(_ message: String) {
+        Log.info(message)
+    }
+
     private func configureJavaScriptContext() throws {
         // configure an exception handler
         javaScriptContext.exceptionHandler = { context, exception in
@@ -253,6 +257,15 @@ extension ClassGenerator {
                 exit(1)
             }
         }
+
+        // expose the classGenLog method to JavaScript
+        let javaScriptLogHandler: @convention(block) (String) -> Void = { [weak self] message in
+            self?.classGenLog(message)
+        }
+        let javaScriptLogHandlerObject = unsafeBitCast(javaScriptLogHandler, to: AnyObject.self)
+        javaScriptContext.setObject(javaScriptLogHandlerObject,
+                                    forKeyedSubscript: "classGenLog" as (NSCopying & NSObjectProtocol)!)
+        _ = javaScriptContext.evaluateScript("classGenLog")
 
         // expose the registerPreDefinedTypes method to JavaScript
         let registerPreDefinedTypesHandler: @convention(block) ([String]) -> Void
