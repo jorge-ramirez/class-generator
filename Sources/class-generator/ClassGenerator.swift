@@ -12,9 +12,9 @@ internal enum ClassGeneratorError: Error {
     case outputDirectoryIsNotADirectory(String)
     case outputDirectoryIsNotEmpty(String)
     case outputDirectoryWasNotSpecified
-    case pluginDirectoryDoesNotExist(String)
-    case pluginDirectoryIsEmpty(String)
-    case pluginDirectoryIsNotADirectory(String)
+    case pluginsDirectoryDoesNotExist(String)
+    case pluginsDirectoryIsEmpty(String)
+    case pluginsDirectoryIsNotADirectory(String)
     case schemasDirectoryDoesNotExist(String)
     case schemasDirectoryIsEmpty(String)
     case schemasDirectoryIsNotADirectory(String)
@@ -29,7 +29,7 @@ internal class ClassGenerator {
 
     var alphabetizeProperties: Bool
     var outputDirectoryPath: Path?
-    var pluginDirectoryPath: Path?
+    var pluginsDirectoryPath: Path?
 
     // MARK: - Private Properties
 
@@ -45,7 +45,7 @@ internal class ClassGenerator {
         self.alphabetizeProperties = false
         self.javaScriptContext = JSContext()
         self.outputDirectoryPath = nil
-        self.pluginDirectoryPath = nil
+        self.pluginsDirectoryPath = nil
         self.preDefinedTypes = []
         self.schemasDirectoryPath = schemasDirectoryPath
         self.templateExtension = Extension()
@@ -198,7 +198,7 @@ internal class ClassGenerator {
         try validateSchemasDirectoryPath()
         try validateTemplateFilePath()
         try validateOutputDirectoryPath()
-        try validatePluginDirectoryPath()
+        try validatePluginsDirectoryPath()
     }
 
     private func validateSchemasDirectoryPath() throws {
@@ -306,11 +306,11 @@ extension ClassGenerator {
     }
 
     private func loadPlugins() throws {
-        guard let pluginDirectoryPath = pluginDirectoryPath else {
+        guard let pluginsDirectoryPath = pluginsDirectoryPath else {
             return
         }
 
-        try pluginDirectoryPath.children().forEach { pluginFilePath in
+        try pluginsDirectoryPath.children().forEach { pluginFilePath in
             guard pluginFilePath.isFile, pluginFilePath.extension == "js" else {
                 Log.warning("Skipping unknown plugin file type: \(pluginFilePath.lastComponent)")
                 return
@@ -364,29 +364,29 @@ extension ClassGenerator {
         preDefinedTypes = Set<String>(typeNames)
     }
 
-    private func validatePluginDirectoryPath() throws {
-        guard let pluginDirectoryPath = pluginDirectoryPath else {
+    private func validatePluginsDirectoryPath() throws {
+        guard let pluginsDirectoryPath = pluginsDirectoryPath else {
             return
         }
 
-        let absolutePath = pluginDirectoryPath.absolute().string
+        let absolutePath = pluginsDirectoryPath.absolute().string
 
-        // ensure the plugin directory exists
-        guard pluginDirectoryPath.exists else {
+        // ensure the plugins directory exists
+        guard pluginsDirectoryPath.exists else {
             Log.error("The plugin directory specified does not exist: " + absolutePath)
-            throw ClassGeneratorError.pluginDirectoryDoesNotExist(absolutePath)
+            throw ClassGeneratorError.pluginsDirectoryDoesNotExist(absolutePath)
         }
 
-        // ensure the plugin directory is a directory
-        guard pluginDirectoryPath.isDirectory else {
+        // ensure the plugins directory is a directory
+        guard pluginsDirectoryPath.isDirectory else {
             Log.error("The plugin directory specified is not a directory: " + absolutePath)
-            throw ClassGeneratorError.pluginDirectoryIsNotADirectory(absolutePath)
+            throw ClassGeneratorError.pluginsDirectoryIsNotADirectory(absolutePath)
         }
 
-        // ensure the plugin directory is not empty
-        guard try !pluginDirectoryPath.children().isEmpty else {
+        // ensure the plugins directory is not empty
+        guard try !pluginsDirectoryPath.children().isEmpty else {
             Log.error("The plugin directory specified is empty: " + absolutePath)
-            throw ClassGeneratorError.pluginDirectoryIsEmpty(absolutePath)
+            throw ClassGeneratorError.pluginsDirectoryIsEmpty(absolutePath)
         }
     }
 
