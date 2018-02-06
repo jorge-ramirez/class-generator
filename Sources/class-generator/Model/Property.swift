@@ -55,7 +55,14 @@ internal class Property: ImmutableMappable {
         case isCollection
         case isOptional
         case rawType
+
+        static let all: [Keys] = [.name, .type, .description, .isCollection, .isOptional, .rawType]
     }
+
+    // MARK: - Private Properties
+
+    /// The original JSON used to populate the Propery object.
+    private var originalJSON: [String: Any]?
 
     // MARK: - Initialization
 
@@ -69,11 +76,22 @@ internal class Property: ImmutableMappable {
         name = try map.value(Keys.name.rawValue)
         type = try map.value(Keys.type.rawValue)
         description = try? map.value(Keys.description.rawValue)
+
+        // save the original JSON data, minus the existing properties
+        let keysToExclude = Keys.all.map { $0.rawValue }
+        originalJSON = map.JSON.filter { key, _ in
+            return !keysToExclude.contains(key)
+        }
     }
 
     // MARK: - Mappable
 
     func mapping(map: Map) {
+        // map the original json data
+        originalJSON?.forEach { key, value in
+            value >>> map[key]
+        }
+
         name >>> map[Keys.name.rawValue]
         type >>> map[Keys.type.rawValue]
         description >>> map[Keys.description.rawValue]
