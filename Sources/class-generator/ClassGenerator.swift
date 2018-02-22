@@ -6,6 +6,8 @@ import ObjectMapper
 import PathKit
 import Stencil
 
+// swiftlint:disable file_length
+
 internal enum ClassGeneratorError: Error {
     case duplicateClassDefined(String)
     case outputDirectoryDoesNotExist(String)
@@ -27,9 +29,9 @@ internal class ClassGenerator {
 
     // MARK: - Public Properties
 
-    var alphabetizeProperties: Bool
-    var outputDirectoryPath: Path?
-    var pluginsDirectoryPath: Path?
+    internal var alphabetizeProperties: Bool
+    internal var outputDirectoryPath: Path?
+    internal var pluginsDirectoryPath: Path?
 
     // MARK: - Private Properties
 
@@ -41,7 +43,7 @@ internal class ClassGenerator {
 
     // MARK: - Initialization
 
-    init(schemasDirectoryPath: Path, templateFilePath: Path) {
+    internal init(schemasDirectoryPath: Path, templateFilePath: Path) {
         self.alphabetizeProperties = false
         self.javaScriptContext = JSContext()
         self.outputDirectoryPath = nil
@@ -54,7 +56,7 @@ internal class ClassGenerator {
 
     // MARK: - Public Methods
 
-    func generate() throws {
+    internal func generate() throws {
         // create the output directory if necessary
         try createOutputDirectoryIfNecessary()
 
@@ -264,7 +266,7 @@ extension ClassGenerator {
         }
         let javaScriptLogHandlerObject = unsafeBitCast(javaScriptLogHandler, to: AnyObject.self)
         javaScriptContext.setObject(javaScriptLogHandlerObject,
-                                    forKeyedSubscript: "classGenLog" as (NSCopying & NSObjectProtocol)!)
+                                    forKeyedSubscript: "classGenLog" as (NSCopying & NSObjectProtocol)!) // swiftlint:disable:this force_unwrapping line_length
         _ = javaScriptContext.evaluateScript("classGenLog")
 
         // expose the registerPreDefinedTypes method to JavaScript
@@ -274,7 +276,7 @@ extension ClassGenerator {
         }
         let registerPreDefinedTypesHandlerObject = unsafeBitCast(registerPreDefinedTypesHandler, to: AnyObject.self)
         javaScriptContext.setObject(registerPreDefinedTypesHandlerObject,
-                                    forKeyedSubscript: "registerPreDefinedTypes" as (NSCopying & NSObjectProtocol)!)
+                                    forKeyedSubscript: "registerPreDefinedTypes" as (NSCopying & NSObjectProtocol)!) // swiftlint:disable:this force_unwrapping line_length
         _ = javaScriptContext.evaluateScript("registerPreDefinedTypes")
 
         // expose the registerFilter method to JavaScript
@@ -284,7 +286,7 @@ extension ClassGenerator {
         }
         let registerFilterHandlerObject = unsafeBitCast(registerFilterHandler, to: AnyObject.self)
         javaScriptContext.setObject(registerFilterHandlerObject,
-                                    forKeyedSubscript: "registerFilter" as (NSCopying & NSObjectProtocol)!)
+                                    forKeyedSubscript: "registerFilter" as (NSCopying & NSObjectProtocol)!) // swiftlint:disable:this force_unwrapping line_length
         _ = javaScriptContext.evaluateScript("registerFilter")
 
         // expose the registerTag method to JavaScript
@@ -294,7 +296,7 @@ extension ClassGenerator {
         }
         let registerTagHandlerObject = unsafeBitCast(registerTagHandler, to: AnyObject.self)
         javaScriptContext.setObject(registerTagHandlerObject,
-                                    forKeyedSubscript: "registerTag" as (NSCopying & NSObjectProtocol)!)
+                                    forKeyedSubscript: "registerTag" as (NSCopying & NSObjectProtocol)!) // swiftlint:disable:this force_unwrapping line_length
         _ = javaScriptContext.evaluateScript("registerTag")
     }
 

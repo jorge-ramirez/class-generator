@@ -8,6 +8,9 @@
 import Foundation
 import ObjectMapper
 
-struct MappingContext: MapContext {
-    let alphabetizeProperties: Bool
+internal struct MappingContext: MapContext {
+
+    /// If true, all class properties will be alphabetized when parsed.
+    internal let alphabetizeProperties: Bool
+
 }
