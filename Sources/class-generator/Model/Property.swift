@@ -7,28 +7,28 @@ internal class Property: ImmutableMappable {
 
     /// The name of the property.
     /// Example: "user" or "firstName"
-    let name: String
+    internal let name: String
 
     /// The property's data type, including if it is a collection and if it's optional.
     /// Example: "String", "String?", "[String]" or "[String]?"
-    let type: String
+    internal let type: String
 
     /// An optional description of the property.
-    let description: String?
+    internal let description: String?
 
     // Whether the property is a collection.
-    var isCollection: Bool {
+    internal var isCollection: Bool {
         return type.hasPrefix("[")
     }
 
     /// Whether the property is optional.
-    var isOptional: Bool {
+    internal var isOptional: Bool {
         return type.hasSuffix("?")
     }
 
     /// The raw data type of the property.
     /// Example: If the type is "[String]?" or "[String]", the rawType would be "String"
-    var rawType: String {
+    internal var rawType: String {
         var startIndex = type.startIndex
         var endIndex = type.endIndex
 
@@ -66,13 +66,13 @@ internal class Property: ImmutableMappable {
 
     // MARK: - Initialization
 
-    init(name: String, type: String, description: String? = nil) {
+    internal init(name: String, type: String, description: String? = nil) {
         self.name = name
         self.type = type
         self.description = description
     }
 
-    required init(map: Map) throws {
+    internal required init(map: Map) throws {
         name = try map.value(Keys.name.rawValue)
         type = try map.value(Keys.type.rawValue)
         description = try? map.value(Keys.description.rawValue)
@@ -80,13 +80,13 @@ internal class Property: ImmutableMappable {
         // save the original JSON data, minus the existing properties
         let keysToExclude = Keys.all.map { $0.rawValue }
         originalJSON = map.JSON.filter { key, _ in
-            return !keysToExclude.contains(key)
+            !keysToExclude.contains(key)
         }
     }
 
     // MARK: - Mappable
 
-    func mapping(map: Map) {
+    internal func mapping(map: Map) {
         // map the original json data
         originalJSON?.forEach { key, value in
             value >>> map[key]

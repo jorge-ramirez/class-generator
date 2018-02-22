@@ -3,21 +3,25 @@ import LoggerAPI
 import SwiftCLI
 
 // build the log format: "[date] [type] message"
-let logFormat = "[%@] [%@] %@"
-let logFormatValues: [HeliumLoggerFormatValues] = [.date, .logType, .message]
-let logFormatArgs = logFormatValues.map { $0.rawValue }
+private let logFormat = "[%@] [%@] %@"
+private let logFormatValues: [HeliumLoggerFormatValues] = [.date, .logType, .message]
+private let logFormatArgs = logFormatValues.map { $0.rawValue }
 
 // create the logger
-let logger = HeliumLogger(.info)
+private let logger = HeliumLogger(.info)
+
+// configure the logger
 logger.colored = true
 logger.format = String(format: logFormat, arguments: logFormatArgs)
 
-// set the logger
+// set the logger instance
 Log.logger = logger
 
 // setup the command line interface
-let cli = CLI(name: "class-generator", version: "1.0.5", description: "class-generator - Generate classes from JSON schemas")
-cli.commands = [GenerateCommand()]
+private let cli = CLI(name: "class-generator",
+                      version: "1.0.5",
+                      description: "class-generator - Generate classes from JSON schemas")
 
-// run the command line interface
-let _ = cli.go()
+// configure and run the command line interface
+cli.commands = [GenerateCommand()]
+_ = cli.go()

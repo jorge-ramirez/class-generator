@@ -5,8 +5,11 @@ internal class Class: ImmutableMappable {
 
     // MARK: - Public Properties
 
-    let name: String
-    let properties: [Property]
+    /// The class' name.
+    internal let name: String
+
+    /// An array of the class' properties.
+    internal let properties: [Property]
 
     // MARK: - Private Enums
 
@@ -24,25 +27,25 @@ internal class Class: ImmutableMappable {
 
     // MARK: - Initialization
 
-    init(name: String, properties: [Property]) {
+    internal init(name: String, properties: [Property]) {
         self.name = name
         self.properties = properties
     }
 
-    required init(map: Map) throws {
+    internal required init(map: Map) throws {
         name = try map.value(Keys.name.rawValue)
         properties = try Class.extractProperties(map: map)
 
         // save the original JSON data, minus the existing properties
         let keysToExclude = Keys.all.map { $0.rawValue }
         originalJSON = map.JSON.filter { key, _ in
-            return !keysToExclude.contains(key)
+            !keysToExclude.contains(key)
         }
     }
 
     // MARK: - Mappable
 
-    func mapping(map: Map) {
+    internal func mapping(map: Map) {
         // map the original json data
         originalJSON?.forEach { key, value in
             value >>> map[key]
