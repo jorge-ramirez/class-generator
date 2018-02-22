@@ -10,6 +10,9 @@ import ObjectMapper
 
 internal struct MappingContext: MapContext {
 
+    /// If true, all enum values will be alphabetized when parsed.
+    internal let alphabetizeEnumValues: Bool
+
     /// If true, all class properties will be alphabetized when parsed.
     internal let alphabetizeProperties: Bool
 
