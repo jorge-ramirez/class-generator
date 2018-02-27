@@ -12,6 +12,8 @@ internal class GenerateCommand: SwiftCLI.Command {
     private let templateFilePath: Parameter = Parameter()
 
     // options
+    private let alphabetizeEnumValues: Flag = Flag("--alphabetize-enum-values",
+        description: "The generated enum values will be listed alphabetical order.")
     private let alphabetizeProperties: Flag = Flag("--alphabetize-properties",
         description: "The generated class properties will be listed alphabetical order.")
     private let outputDirectoryPath: Key<String> = Key<String>("--output-directory-path",
@@ -28,6 +30,7 @@ internal class GenerateCommand: SwiftCLI.Command {
         let generator = ClassGenerator(schemasDirectoryPath: Path(schemasDirectoryPath.value),
                                        templateFilePath: Path(templateFilePath.value))
 
+        generator.alphabetizeEnumValues = alphabetizeEnumValues.value
         generator.alphabetizeProperties = alphabetizeProperties.value
 
         if let outputDirectoryPath = outputDirectoryPath.value {

@@ -75,11 +75,13 @@ internal class Enum: DataType {
     }
 
     private class func shouldAlphabetizeValues(map: Map) -> Bool {
-        guard let context = map.context as? MappingContext else {
-            return false
-        }
-
-        return context.alphabetizeEnumValues
+        // TODO: figure out how to get a hold of the context in DataTypeTransformType
+        return true
+//        guard let context = map.context as? MappingContext else {
+//            return false
+//        }
+//
+//        return context.alphabetizeEnumValues
     }
 
 }
