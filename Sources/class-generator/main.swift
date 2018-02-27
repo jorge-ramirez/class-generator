@@ -19,7 +19,7 @@ Log.logger = logger
 
 // setup the command line interface
 private let cli = CLI(name: "class-generator",
-                      version: "1.0.7",
+                      version: "1.0.8",
                       description: "class-generator - Generate classes from JSON schemas")
 
 // configure and run the command line interface
