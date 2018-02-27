@@ -59,7 +59,8 @@ To specify an optional, add a question mark at the end of the type definition.  
                 { "name": "firstName", "type": "String" },
                 { "name": "lastName", "type": "String" },
                 { "name": "age", "type": "Int?" },
-                { "name": "address", "type": "Address?" }
+                { "name": "address", "type": "Address?" },
+                { "name": "role", "type": "Role" }
             ]
         },
         {
@@ -76,7 +77,20 @@ To specify an optional, add a question mark at the end of the type definition.  
             "name": "Role",
             "type": "enum",
             "rawType": "String",
-            "values": ["Admin", "Moderator", "User"]
+            "values": [
+                {
+                    "name": "administrator",
+                    "rawValue": "10001"
+                },
+                {
+                    "name": "moderator",
+                    "rawValue": "10002"
+                },
+                {
+                    "name": "user",
+                    "rawValue": "10003"
+                }
+            ]
         }
     ]
 }

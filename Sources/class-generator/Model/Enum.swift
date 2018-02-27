@@ -10,7 +10,7 @@ internal class Enum: DataType {
     internal var rawType: String
 
     /// An array of the enum's allowed values.
-    internal let values: [String]
+    internal let values: [Value]
 
     // MARK: - Private Enums
 
@@ -28,7 +28,7 @@ internal class Enum: DataType {
 
     // MARK: - Initialization
 
-    internal init(name: String, rawType: String, values: [String]) {
+    internal init(name: String, rawType: String, values: [Value]) {
         self.rawType = rawType
         self.values = values
 
@@ -64,11 +64,11 @@ internal class Enum: DataType {
 
     // MARK: - Private Methods
 
-    private class func extractValues(map: Map) throws -> [String] {
-        var values: [String] = try map.value(Keys.values.rawValue)
+    private class func extractValues(map: Map) throws -> [Value] {
+        var values: [Value] = try map.value(Keys.values.rawValue)
 
         if shouldAlphabetizeValues(map: map) {
-            values.sort { $0.compare($1, options: .caseInsensitive) == .orderedAscending }
+            values.sort { $0.name.compare($1.name, options: .caseInsensitive) == .orderedAscending }
         }
 
         return values
