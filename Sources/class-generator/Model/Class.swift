@@ -1,12 +1,9 @@
 import Foundation
 import ObjectMapper
 
-internal class Class: ImmutableMappable {
+internal class Class: DataType {
 
     // MARK: - Public Properties
-
-    /// The class' name.
-    internal let name: String
 
     /// An array of the class' properties.
     internal let properties: [Property]
@@ -14,10 +11,9 @@ internal class Class: ImmutableMappable {
     // MARK: - Private Enums
 
     private enum Keys: String {
-        case name
         case properties
 
-        static let all: [Keys] = [.name, .properties]
+        static let all: [Keys] = [.properties]
     }
 
     // MARK: - Private Properties
@@ -28,12 +24,12 @@ internal class Class: ImmutableMappable {
     // MARK: - Initialization
 
     internal init(name: String, properties: [Property]) {
-        self.name = name
         self.properties = properties
+
+        super.init(name: name, type: .class)
     }
 
     internal required init(map: Map) throws {
-        name = try map.value(Keys.name.rawValue)
         properties = try Class.extractProperties(map: map)
 
         // save the original JSON data, minus the existing properties
@@ -41,17 +37,19 @@ internal class Class: ImmutableMappable {
         originalJSON = map.JSON.filter { key, _ in
             !keysToExclude.contains(key)
         }
+
+        try super.init(map: map)
     }
 
     // MARK: - Mappable
 
-    internal func mapping(map: Map) {
+    internal override func mapping(map: Map) {
         // map the original json data
         originalJSON?.forEach { key, value in
             value >>> map[key]
         }
 
-        name >>> map[Keys.name.rawValue]
+        super.mapping(map: map)
         properties >>> map[Keys.properties.rawValue]
     }
 
@@ -61,7 +59,7 @@ internal class Class: ImmutableMappable {
         var properties: [Property] = try map.value(Keys.properties.rawValue)
 
         if shouldAlphabetizeProperties(map: map) {
-            properties.sort { $0.name.compare($1.name) == .orderedAscending }
+            properties.sort { $0.name.compare($1.name, options: .caseInsensitive) == .orderedAscending }
         }
 
         return properties

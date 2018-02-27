@@ -10,10 +10,18 @@ It takes as input, schema files written in `JSON`.  It then uses a specified tem
 
 The JSON schema files should consist of an array of class objects at its root.  The class objects and its subtypes are defined below:
 
-### Class Object
+### Class DataType
 
  - `name` [String] The class' name.
+ - `type` [String] The data type's type, (`class` or `enum`).  Defaults to `class`.
  - `properties` [array of Property objects] The class' properties.
+
+### Enum DataType
+
+ - `name` [String] The enum's name.
+ - `type` [String] The data type's type, (`class` or `enum`).  Defaults to `class`.
+ - `rawType` [String] The enum values' data type.
+ - `values` [array of String objects] The possible enum values.
 
 ### Property Object
 
@@ -61,7 +69,12 @@ To specify an optional, add a question mark at the end of the type definition.  
             { "name": "state", "type": "String" },
             { "name": "zipcode", "type": "Int" }
         ]
-    }
+    },
+    {
+        "name": "Role",
+        "type": "enum",
+        "values": ["Admin", "Moderator", "User"]
+    },
 ]
 ```
 

@@ -9,7 +9,7 @@ import Stencil
 // swiftlint:disable file_length
 
 internal enum ClassGeneratorError: Error {
-    case duplicateClassDefined(String)
+    case duplicateDataTypeDefined(String)
     case outputDirectoryDoesNotExist(String)
     case outputDirectoryIsNotADirectory(String)
     case outputDirectoryIsNotEmpty(String)
@@ -22,13 +22,15 @@ internal enum ClassGeneratorError: Error {
     case schemasDirectoryIsNotADirectory(String)
     case templateFileDoesNotExist(String)
     case templateFileIsNotAFile(String)
-    case undefinedClassUsed(String)
+    case undefinedDataTypeUsed(String)
+    case unhandledDataType
 }
 
 internal class ClassGenerator {
 
     // MARK: - Public Properties
 
+    internal var alphabetizeEnumValues: Bool
     internal var alphabetizeProperties: Bool
     internal var outputDirectoryPath: Path?
     internal var pluginsDirectoryPath: Path?
@@ -44,6 +46,7 @@ internal class ClassGenerator {
     // MARK: - Initialization
 
     internal init(schemasDirectoryPath: Path, templateFilePath: Path) {
+        self.alphabetizeEnumValues = false
         self.alphabetizeProperties = false
         self.javaScriptContext = JSContext()
         self.outputDirectoryPath = nil
@@ -71,11 +74,11 @@ internal class ClassGenerator {
         try configureJavaScriptContext()
         try loadPlugins()
 
-        // parse the classes found in the schema files
-        let classes = try parseAllClasses()
+        // parse the data types found in the schema files
+        let dataTypes = try parseAllDataTypes()
 
-        // validate the classes which were parsed
-        try validateClasses(classes)
+        // validate the data types which were parsed
+        try validateDataTypes(dataTypes)
 
         // extract the template directory path and template file name
         let (templateDirectoryPath, templateFileName) = templateDirectoryPathAndFileName()
@@ -84,8 +87,8 @@ internal class ClassGenerator {
         let templateLoader = FileSystemLoader(paths: [templateDirectoryPath])
         let templateEnvironment = Environment(loader: templateLoader, extensions: [templateExtension])
 
-        // generate a class file for each class
-        try classes.forEach {
+        // generate a data type file for each data type
+        try dataTypes.forEach {
             let outputFilePath = outputDirectoryPath + Path($0.name + ".swift")
             Log.info("Generating output file: " + outputFilePath.lastComponent)
 
@@ -116,10 +119,11 @@ internal class ClassGenerator {
         Log.info("Created temporary output directory: " + tempDirectory.absolute().string)
     }
 
-    private func parseAllClasses() throws -> [Class] {
-        var classes: [Class] = []
-        let context = MappingContext(alphabetizeProperties: alphabetizeProperties)
-        let mapper = Mapper<Class>(context: context)
+    private func parseAllDataTypes() throws -> [DataType] {
+        var dataTypes: [DataType] = []
+        let context = MappingContext(alphabetizeEnumValues: alphabetizeEnumValues,
+                                     alphabetizeProperties: alphabetizeProperties)
+        let mapper = Mapper<Schema>(context: context)
 
         try schemasDirectoryPath.children().forEach { schemaFilePath in
             guard schemaFilePath.isFile, schemaFilePath.extension == "json" else {
@@ -129,11 +133,50 @@ internal class ClassGenerator {
 
             Log.info("Parsing schema file: " + schemaFilePath.lastComponent)
             let schemaFileContents: String = try schemaFilePath.read()
-            let schemaFileClasses = try mapper.mapArray(JSONString: schemaFileContents)
-            classes.append(contentsOf: schemaFileClasses)
+            let schema = try mapper.map(JSONString: schemaFileContents)
+            dataTypes.append(contentsOf: schema.dataTypes)
         }
 
-        return classes
+        return dataTypes
+    }
+
+    private func validateDataTypes(_ dataTypes: [DataType]) throws {
+        var dataTypeNameToDataTypeDict: [String: DataType] = [:]
+
+        // store the data types into the dictionary by name, throw an error when a duplicate data type name is found
+        try dataTypes.forEach {
+            guard dataTypeNameToDataTypeDict[$0.name] == nil else {
+                Log.error("Duplicate data type name defined: " + $0.name)
+                throw ClassGeneratorError.duplicateDataTypeDefined($0.name)
+            }
+
+            dataTypeNameToDataTypeDict[$0.name] = $0
+        }
+
+        // ensure all of the specified types exist
+        try dataTypes.forEach {
+            if let aClass = $0 as? Class {
+                // check all of the class' properties' types
+
+                try aClass.properties.forEach {
+                    if dataTypeNameToDataTypeDict[$0.rawType] == nil && !preDefinedTypes.contains($0.rawType) {
+                        Log.error("Undefined data type used: " + $0.rawType)
+                        throw ClassGeneratorError.undefinedDataTypeUsed($0.rawType)
+                    }
+                }
+            } else if let anEnum = $0 as? Enum {
+                // check the enum's rawType
+
+                if dataTypeNameToDataTypeDict[anEnum.rawType] == nil && !preDefinedTypes.contains(anEnum.rawType) {
+                    Log.error("Undefined data type used: " + anEnum.rawType)
+                    throw ClassGeneratorError.undefinedDataTypeUsed(anEnum.rawType)
+                }
+            } else {
+                // unhandled data type
+
+                throw ClassGeneratorError.unhandledDataType
+            }
+        }
     }
 
     private func templateDirectoryPathAndFileName() -> (templateDirectoryPath: Path, templateFileName: String) {
@@ -143,30 +186,6 @@ internal class ClassGenerator {
         let templateFileName = templateFilePath.lastComponent
 
         return (templateDirectoryPath: templateDirectoryPath, templateFileName: templateFileName)
-    }
-
-    private func validateClasses(_ classes: [Class]) throws {
-        var classNameToClassDict: [String: Class] = [:]
-
-        // store the classes into the dictionary by name, throw an error when a duplicate class is found
-        try classes.forEach {
-            guard classNameToClassDict[$0.name] == nil else {
-                Log.error("Duplicate class name defined: " + $0.name)
-                throw ClassGeneratorError.duplicateClassDefined($0.name)
-            }
-
-            classNameToClassDict[$0.name] = $0
-        }
-
-        // ensure all of the specified property types exist
-        try classes.forEach {
-            try $0.properties.forEach {
-                if classNameToClassDict[$0.rawType] == nil && !preDefinedTypes.contains($0.rawType) {
-                    Log.error("Undefined class name used: " + $0.rawType)
-                    throw ClassGeneratorError.undefinedClassUsed($0.rawType)
-                }
-            }
-        }
     }
 
     private func validateOutputDirectoryPath() throws {
