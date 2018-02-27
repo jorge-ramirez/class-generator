@@ -44,38 +44,42 @@ To specify an optional, add a question mark at the end of the type definition.  
 #### Example
 
 ```JSON
-[
-    {
-        "name": "UsersResponse",
-        "properties": [
-            { "name": "users", "type": "[User]" }
-        ]
-    },
-    {
-        "name": "User",
-        "properties": [
-            { "name": "firstName", "type": "String" },
-            { "name": "lastName", "type": "String" },
-            { "name": "age", "type": "Int?" },
-            { "name": "address", "type": "Address?" }
-        ]
-    },
-    {
-        "name": "Address",
-        "properties": [
-            { "name": "streetAddress1", "type": "String" },
-            { "name": "streetAddress2", "type": "String?" },
-            { "name": "city", "type": "String" },
-            { "name": "state", "type": "String" },
-            { "name": "zipcode", "type": "Int" }
-        ]
-    },
-    {
-        "name": "Role",
-        "type": "enum",
-        "values": ["Admin", "Moderator", "User"]
-    },
-]
+{
+    "version": "2.0",
+    "dataTypes": [
+        {
+            "name": "UsersResponse",
+            "properties": [
+                { "name": "users", "type": "[User]" }
+            ]
+        },
+        {
+            "name": "User",
+            "properties": [
+                { "name": "firstName", "type": "String" },
+                { "name": "lastName", "type": "String" },
+                { "name": "age", "type": "Int?" },
+                { "name": "address", "type": "Address?" }
+            ]
+        },
+        {
+            "name": "Address",
+            "properties": [
+                { "name": "streetAddress1", "type": "String" },
+                { "name": "streetAddress2", "type": "String?" },
+                { "name": "city", "type": "String" },
+                { "name": "state", "type": "String" },
+                { "name": "zipcode", "type": "Int" }
+            ]
+        },
+        {
+            "name": "Role",
+            "type": "enum",
+            "rawType": "String",
+            "values": ["Admin", "Moderator", "User"]
+        }
+    ]
+}
 ```
 
 ## Templates
