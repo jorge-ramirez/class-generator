@@ -159,17 +159,17 @@ internal class ClassGenerator {
                 // check all of the class' properties' types
 
                 try aClass.properties.forEach {
-                    if dataTypeNameToDataTypeDict[$0.rawType] == nil && !preDefinedTypes.contains($0.rawType) {
-                        Log.error("Undefined data type used: " + $0.rawType)
-                        throw ClassGeneratorError.undefinedDataTypeUsed($0.rawType)
+                    if dataTypeNameToDataTypeDict[$0.rawDataType] == nil && !preDefinedTypes.contains($0.rawDataType) {
+                        Log.error("Undefined data type used: " + $0.rawDataType)
+                        throw ClassGeneratorError.undefinedDataTypeUsed($0.rawDataType)
                     }
                 }
             } else if let anEnum = $0 as? Enum {
-                // check the enum's rawType
+                // check the enum's rawDataType
 
-                if dataTypeNameToDataTypeDict[anEnum.rawType] == nil && !preDefinedTypes.contains(anEnum.rawType) {
-                    Log.error("Undefined data type used: " + anEnum.rawType)
-                    throw ClassGeneratorError.undefinedDataTypeUsed(anEnum.rawType)
+                if dataTypeNameToDataTypeDict[anEnum.dataType] == nil && !preDefinedTypes.contains(anEnum.dataType) {
+                    Log.error("Undefined data type used: " + anEnum.dataType)
+                    throw ClassGeneratorError.undefinedDataTypeUsed(anEnum.dataType)
                 }
             } else {
                 // unhandled data type

@@ -11,52 +11,52 @@ internal class Property: ImmutableMappable {
 
     /// The property's data type, including if it is a collection and if it's optional.
     /// Example: "String", "String?", "[String]" or "[String]?"
-    internal let type: String
+    internal let dataType: String
 
     /// An optional description of the property.
     internal let description: String?
 
     // Whether the property is a collection.
     internal var isCollection: Bool {
-        return type.hasPrefix("[")
+        return dataType.hasPrefix("[")
     }
 
     /// Whether the property is optional.
     internal var isOptional: Bool {
-        return type.hasSuffix("?")
+        return dataType.hasSuffix("?")
     }
 
     /// The raw data type of the property.
-    /// Example: If the type is "[String]?" or "[String]", the rawType would be "String"
-    internal var rawType: String {
-        var startIndex = type.startIndex
-        var endIndex = type.endIndex
+    /// Example: If the type is "[String]?" or "[String]", the rawDataType would be "String"
+    internal var rawDataType: String {
+        var startIndex = dataType.startIndex
+        var endIndex = dataType.endIndex
 
         if isCollection {
             // acount for the square brackets at the start and end of the type declaration
-            startIndex = type.index(after: startIndex)
-            endIndex = type.index(before: endIndex)
+            startIndex = dataType.index(after: startIndex)
+            endIndex = dataType.index(before: endIndex)
         }
 
         if isOptional {
             // acount for the question mark at the end of the type declaration
-            endIndex = type.index(endIndex, offsetBy: -1)
+            endIndex = dataType.index(endIndex, offsetBy: -1)
         }
 
-        return String(type[startIndex..<endIndex])
+        return String(dataType[startIndex..<endIndex])
     }
 
     // MARK: - Private Enums
 
     private enum Keys: String {
         case name
-        case type
+        case dataType
         case description
         case isCollection
         case isOptional
-        case rawType
+        case rawDataType
 
-        static let all: [Keys] = [.name, .type, .description, .isCollection, .isOptional, .rawType]
+        static let all: [Keys] = [.name, .dataType, .description, .isCollection, .isOptional, .rawDataType]
     }
 
     // MARK: - Private Properties
@@ -66,15 +66,15 @@ internal class Property: ImmutableMappable {
 
     // MARK: - Initialization
 
-    internal init(name: String, type: String, description: String? = nil) {
+    internal init(name: String, dataType: String, description: String? = nil) {
         self.name = name
-        self.type = type
+        self.dataType = dataType
         self.description = description
     }
 
     internal required init(map: Map) throws {
         name = try map.value(Keys.name.rawValue)
-        type = try map.value(Keys.type.rawValue)
+        dataType = try map.value(Keys.dataType.rawValue)
         description = try? map.value(Keys.description.rawValue)
 
         // save the original JSON data, minus the existing properties
@@ -93,12 +93,12 @@ internal class Property: ImmutableMappable {
         }
 
         name >>> map[Keys.name.rawValue]
-        type >>> map[Keys.type.rawValue]
+        dataType >>> map[Keys.dataType.rawValue]
         description >>> map[Keys.description.rawValue]
 
         isCollection >>> map[Keys.isCollection.rawValue]
         isOptional >>> map[Keys.isOptional.rawValue]
-        rawType >>> map[Keys.rawType.rawValue]
+        rawDataType >>> map[Keys.rawDataType.rawValue]
     }
 
 }

@@ -3,8 +3,22 @@ import ObjectMapper
 
 internal class DataTypeTransformType: TransformType {
 
-    public typealias Object = [DataType]
-    public typealias JSON = [[String: Any]]
+    // MARK: - Public Properties
+
+    internal typealias Object = [DataType]
+    internal typealias JSON = [[String: Any]]
+
+    // MARK: - Private Properties
+
+    private let context: MapContext?
+
+    // MARK: - Initialization
+
+    internal init(context: MapContext?) {
+        self.context = context
+    }
+
+    // MARK: - TransformType
 
     internal func transformToJSON(_ value: [DataType]?) -> [[String: Any]]? {
         // convert the DataType objects into JSON
@@ -23,9 +37,9 @@ internal class DataTypeTransformType: TransformType {
 
             switch type {
             case .class:
-                return Class(JSON: $0)
+                return Class(JSON: $0, context: context)
             case .enum:
-                return Enum(JSON: $0)
+                return Enum(JSON: $0, context: context)
             }
         }
     }

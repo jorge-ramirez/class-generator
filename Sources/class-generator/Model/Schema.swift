@@ -28,7 +28,7 @@ internal class Schema: ImmutableMappable {
 
     internal required init(map: Map) throws {
         version = try map.value(Keys.version.rawValue)
-        dataTypes = try map.value(Keys.dataTypes.rawValue, using: DataTypeTransformType())
+        dataTypes = try map.value(Keys.dataTypes.rawValue, using: DataTypeTransformType(context: map.context))
     }
 
     // MARK: - Mappable

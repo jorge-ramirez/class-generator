@@ -13,21 +13,26 @@ The JSON schema files should consist of an array of class objects at its root.  
 ### Class DataType
 
  - `name` [String] The class' name.
- - `type` [String] The data type's type, (`class` or `enum`).  Defaults to `class`.
+ - `type` [String] The type of data type, (`class` or `enum`).  Defaults to `class`.
  - `properties` [array of Property objects] The class' properties.
+
+### Property Object
+
+ - `name` [String] The property's name.
+ - `dataType` [String] The property's data type.
+ - `description` [String, optional] A description of the property.
 
 ### Enum DataType
 
  - `name` [String] The enum's name.
  - `type` [String] The data type's type, (`class` or `enum`).  Defaults to `class`.
- - `rawType` [String] The enum values' data type.
- - `values` [array of String objects] The possible enum values.
+ - `dataType` [String] The enum values' data type.
+ - `values` [array of Value objects] The enum's possible values.
 
-### Property Object
+### Value Object
 
- - `name` [String] The property's name.
- - `type` [String] The property's data type.
- - `description` [String, optional] A description of the property.
+ - `name` [String] The enum's display name.
+ - `value` [String] The enum's JSON value.
 
 #### Types
 
@@ -49,47 +54,39 @@ To specify an optional, add a question mark at the end of the type definition.  
     "dataTypes": [
         {
             "name": "UsersResponse",
+            "type": "class",
             "properties": [
-                { "name": "users", "type": "[User]" }
+                { "name": "users", "dataType": "[User]" }
             ]
         },
         {
             "name": "User",
             "properties": [
-                { "name": "firstName", "type": "String" },
-                { "name": "lastName", "type": "String" },
-                { "name": "age", "type": "Int?" },
-                { "name": "address", "type": "Address?" },
-                { "name": "role", "type": "Role" }
+                { "name": "firstName", "dataType": "String" },
+                { "name": "lastName", "dataType": "String" },
+                { "name": "age", "dataType": "Int?" },
+                { "name": "address", "dataType": "Address?" },
+                { "name": "role", "dataType": "Role" }
             ]
         },
         {
             "name": "Address",
             "properties": [
-                { "name": "streetAddress1", "type": "String" },
-                { "name": "streetAddress2", "type": "String?" },
-                { "name": "city", "type": "String" },
-                { "name": "state", "type": "String" },
-                { "name": "zipcode", "type": "Int" }
+                { "name": "streetAddress1", "dataType": "String" },
+                { "name": "streetAddress2", "dataType": "String?" },
+                { "name": "city", "dataType": "String" },
+                { "name": "state", "dataType": "String" },
+                { "name": "zipcode", "dataType": "Int" }
             ]
         },
         {
             "name": "Role",
             "type": "enum",
-            "rawType": "String",
+            "dataType": "String",
             "values": [
-                {
-                    "name": "administrator",
-                    "rawValue": "10001"
-                },
-                {
-                    "name": "moderator",
-                    "rawValue": "10002"
-                },
-                {
-                    "name": "user",
-                    "rawValue": "10003"
-                }
+                { "name": "administrator", "value": "10001" },
+                { "name": "moderator", "value": "10002" },
+                { "name": "user", "value": "10003" }
             ]
         }
     ]
@@ -112,7 +109,7 @@ The default properties in the Property Object (see above), plus the following:
 
  - `isCollection` [Bool] Whether or not the property represents a collection (for example an array).
  - `isOptional` [Bool] Whether or not the property represents an optional value.
- - `rawType` [String] The property's raw data type (the same value as `type`, except without the collection and optionality modifiers). 
+ - `rawDataType` [String] The property's raw data type (the same value as `type`, except without the collection and optionality modifiers). 
 
 #### Example
 
@@ -128,7 +125,7 @@ The default properties in the Property Object (see above), plus the following:
 import Foundation
 import ObjectMapper
 
-internal class {{ name }}: ImmutableMappable {
+{% if type == "class" %}internal class {{ name }}: ImmutableMappable {
 
     // MARK: - Public Properties
     {% for property in properties %}
@@ -147,19 +144,21 @@ internal class {{ name }}: ImmutableMappable {
         self.{{ property.name }} = {{ property.name }}{% endfor %}
     }
 
-    required init(map: Map) throws { {% for property in properties %}{% if property.rawType == "Date" %}
+    required init(map: Map) throws { {% for property in properties %}{% if property.rawDataType == "Date" %}
         {{ property.name }} = try{% if property.isOptional %}?{% endif %} map.value(Keys.{{ property.name }}.rawValue, using: ISO8601DateTransform()){% else %}
         {{ property.name }} = try{% if property.isOptional %}?{% endif %} map.value(Keys.{{ property.name }}.rawValue){% endif %}{% endfor %}
     }
 
     // MARK: - Mappable
 
-    func mapping(map: Map) { {% for property in properties %}{% if property.rawType == "Date" %}
+    func mapping(map: Map) { {% for property in properties %}{% if property.rawDataType == "Date" %}
         {{ property.name }} >>> (map[Keys.{{ property.name }}.rawValue], ISO8601DateTransform()){% else %}
         {{ property.name }} >>> map[Keys.{{ property.name }}.rawValue]{% endif %}{% endfor %}
     }
 
-}
+}{% elif type == "enum" %}internal enum {{ name }}: {{ dataType }}: { {% for value in values %}
+    case {{ value.name }} = "{{ value.value }}"{% endfor %}
+}{% endif %}
 ```
 
 ## Plugins

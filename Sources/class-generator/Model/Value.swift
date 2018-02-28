@@ -9,17 +9,17 @@ internal class Value: ImmutableMappable {
     /// Example: "invalidPromoCode"
     internal let name: String
 
-    /// The raw value of the enum value.
-    /// Example: "INVALID_PROMO_CODE"
-    internal let rawValue: String
+    /// The value of the enum value.
+    /// Example: "INVALID_PROMO_CODE" or "10001"
+    internal let value: String
 
     // MARK: - Private Enums
 
     private enum Keys: String {
         case name
-        case rawValue
+        case value
 
-        static let all: [Keys] = [.name, .rawValue]
+        static let all: [Keys] = [.name, .value]
     }
 
     // MARK: - Private Properties
@@ -29,14 +29,14 @@ internal class Value: ImmutableMappable {
 
     // MARK: - Initialization
 
-    internal init(name: String, rawValue: String) {
+    internal init(name: String, value: String) {
         self.name = name
-        self.rawValue = rawValue
+        self.value = value
     }
 
     internal required init(map: Map) throws {
         name = try map.value(Keys.name.rawValue)
-        rawValue = try map.value(Keys.rawValue.rawValue)
+        value = try map.value(Keys.value.rawValue)
 
         // save the original JSON data, minus the existing properties
         let keysToExclude = Keys.all.map { $0.rawValue }
@@ -54,7 +54,7 @@ internal class Value: ImmutableMappable {
         }
 
         name >>> map[Keys.name.rawValue]
-        rawValue >>> map[Keys.rawValue.rawValue]
+        value >>> map[Keys.value.rawValue]
     }
 
 }

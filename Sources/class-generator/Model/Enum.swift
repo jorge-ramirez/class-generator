@@ -5,9 +5,9 @@ internal class Enum: DataType {
 
     // MARK: - Public Properties
 
-    /// The raw data type of the enum.
+    /// The enum values' data type.
     /// Example: "String" or "Int"
-    internal var rawType: String
+    internal var dataType: String
 
     /// An array of the enum's allowed values.
     internal let values: [Value]
@@ -15,10 +15,10 @@ internal class Enum: DataType {
     // MARK: - Private Enums
 
     private enum Keys: String {
-        case rawType
+        case dataType
         case values
 
-        static let all: [Keys] = [.rawType, .values]
+        static let all: [Keys] = [.dataType, .values]
     }
 
     // MARK: - Private Properties
@@ -28,15 +28,15 @@ internal class Enum: DataType {
 
     // MARK: - Initialization
 
-    internal init(name: String, rawType: String, values: [Value]) {
-        self.rawType = rawType
+    internal init(name: String, dataType: String, values: [Value]) {
+        self.dataType = dataType
         self.values = values
 
         super.init(name: name, type: .enum)
     }
 
     internal required init(map: Map) throws {
-        rawType = try map.value(Keys.rawType.rawValue)
+        dataType = try map.value(Keys.dataType.rawValue)
         values = try Enum.extractValues(map: map)
 
         // save the original JSON data, minus the existing properties
@@ -58,7 +58,7 @@ internal class Enum: DataType {
 
         super.mapping(map: map)
 
-        rawType >>> map[Keys.rawType.rawValue]
+        dataType >>> map[Keys.dataType.rawValue]
         values >>> map[Keys.values.rawValue]
     }
 
@@ -75,13 +75,11 @@ internal class Enum: DataType {
     }
 
     private class func shouldAlphabetizeValues(map: Map) -> Bool {
-        // TODO: figure out how to get a hold of the context in DataTypeTransformType
-        return true
-//        guard let context = map.context as? MappingContext else {
-//            return false
-//        }
-//
-//        return context.alphabetizeEnumValues
+        guard let context = map.context as? MappingContext else {
+            return false
+        }
+
+        return context.alphabetizeEnumValues
     }
 
 }

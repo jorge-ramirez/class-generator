@@ -10,6 +10,7 @@ internal class DataType: ImmutableMappable {
     internal let name: String
 
     /// The type of data type.
+    /// Defaults to "class"
     internal let type: Type
 
     // MARK: - Private Enums
