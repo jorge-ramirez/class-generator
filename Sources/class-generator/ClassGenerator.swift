@@ -80,8 +80,8 @@ internal class ClassGenerator {
         // validate the data types which were parsed
         try validateDataTypes(dataTypes)
 
-        // extract the template directory path and template file name
-        let (templateDirectoryPath, templateFileName) = templateDirectoryPathAndFileName()
+        // extract the template directory path, file name and file extension
+        let (templateDirectoryPath, templateFileName, templateFileExtension) = templateParts()
 
         // create the template environment
         let templateLoader = FileSystemLoader(paths: [templateDirectoryPath])
@@ -89,8 +89,9 @@ internal class ClassGenerator {
 
         // generate a data type file for each data type
         try dataTypes.forEach {
-            let outputFilePath = outputDirectoryPath + Path($0.name + ".swift")
-            Log.info("Generating output file: " + outputFilePath.lastComponent)
+            let outFileName = $0.name + "." + templateFileExtension
+            let outputFilePath = outputDirectoryPath + Path(outFileName)
+            Log.info("Generating output file: " + outFileName)
 
             do {
                 let objectDictionary = Mapper().toJSON($0)
@@ -139,6 +140,16 @@ internal class ClassGenerator {
 
         return dataTypes
     }
+    
+    private func templateParts() -> (directoryPath: Path, fileName: String, fileExtension: String) {
+        var templateDirectoryComponents = templateFilePath.components
+        _ = templateDirectoryComponents.popLast()
+        let templateDirectoryPath = Path(components: templateDirectoryComponents)
+        let templateFileName = templateFilePath.lastComponent
+        let templateExtension = templateFilePath.extension ?? "txt"
+        
+        return (directoryPath: templateDirectoryPath, fileName: templateFileName, fileExtension: templateExtension)
+    }
 
     private func validateDataTypes(_ dataTypes: [DataType]) throws {
         var dataTypeNameToDataTypeDict: [String: DataType] = [:]
@@ -177,15 +188,6 @@ internal class ClassGenerator {
                 throw ClassGeneratorError.unhandledDataType
             }
         }
-    }
-
-    private func templateDirectoryPathAndFileName() -> (templateDirectoryPath: Path, templateFileName: String) {
-        var templateDirectoryComponents = templateFilePath.components
-        _ = templateDirectoryComponents.popLast()
-        let templateDirectoryPath = Path(components: templateDirectoryComponents)
-        let templateFileName = templateFilePath.lastComponent
-
-        return (templateDirectoryPath: templateDirectoryPath, templateFileName: templateFileName)
     }
 
     private func validateOutputDirectoryPath() throws {
