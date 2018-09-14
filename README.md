@@ -320,3 +320,4 @@ You can then find the binary at `.build/debug/class-generator`.
 - [SwiftCLI](https://github.com/jakeheis/SwiftCLI)
 - [ObjectMapper](https://github.com/Hearst-DD/ObjectMapper)
 - [HeliumLogger](https://github.com/IBM-Swift/HeliumLogger)
+
