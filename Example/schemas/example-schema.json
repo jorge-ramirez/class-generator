@@ -1,0 +1,42 @@
+{
+    "version": "2.1",
+    "dataTypes": [
+        {
+            "name": "UsersResponse",
+            "type": "class",
+            "properties": [
+                { "name": "users", "dataType": "[User]" }
+            ]
+        },
+        {
+            "name": "User",
+            "properties": [
+                { "name": "firstName", "dataType": "String" },
+                { "name": "lastName", "dataType": "String" },
+                { "name": "age", "dataType": "Int?" },
+                { "name": "address", "dataType": "Address?" },
+                { "name": "role", "dataType": "Role" }
+            ]
+        },
+        {
+            "name": "Address",
+            "properties": [
+                { "name": "streetAddress1", "dataType": "String" },
+                { "name": "streetAddress2", "dataType": "String?" },
+                { "name": "city", "dataType": "String" },
+                { "name": "state", "dataType": "String" },
+                { "name": "zipcode", "dataType": "Int" }
+            ]
+        },
+        {
+            "name": "Role",
+            "type": "enum",
+            "dataType": "String",
+            "values": [
+                { "name": "administrator", "value": "10001" },
+                { "name": "moderator", "value": "10002" },
+                { "name": "user", "value": "10003" }
+            ]
+        }
+    ]
+}
