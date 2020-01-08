@@ -1,4 +1,4 @@
-# class-generator
+# class-generator 
 
 [![Build Status](https://travis-ci.org/jorge-ramirez/class-generator.svg?branch=master)](https://travis-ci.org/jorge-ramirez/class-generator)
 
@@ -109,7 +109,7 @@ The default properties in the Property Object (see above), plus the following:
 
  - `isCollection` [Bool] Whether or not the property represents a collection (for example an array).
  - `isOptional` [Bool] Whether or not the property represents an optional value.
- - `rawDataType` [String] The property's raw data type (the same value as `type`, except without the collection and optionality modifiers). 
+ - `rawDataType` [String] The property's raw data type (the same value as `type`, except without the collection and optionality modifiers).
 
 #### Example
 
@@ -194,7 +194,7 @@ registerPreDefinedTypes(["Bool", "Date", "Decimal", "Double", "Float", "Int", "L
 
 ### Custom Filters
 
-Custom `Stencil` template filters can be registered using the exposed `registerFilter` function.  For example, the `swiftNameAndTypeDeclaration` filter is used in the example template above.  The plugin is shown below: 
+Custom `Stencil` template filters can be registered using the exposed `registerFilter` function.  For example, the `swiftNameAndTypeDeclaration` filter is used in the example template above.  The plugin is shown below:
 
 #### Example
 
@@ -320,4 +320,3 @@ You can then find the binary at `.build/debug/class-generator`.
 - [SwiftCLI](https://github.com/jakeheis/SwiftCLI)
 - [ObjectMapper](https://github.com/Hearst-DD/ObjectMapper)
 - [HeliumLogger](https://github.com/IBM-Swift/HeliumLogger)
-
