@@ -28,8 +28,9 @@ internal class Schema: Codable {
     internal required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: AnyCodingKey.self)
 
-        let wrappedDataTypes = try container.decode([FailableDecodable<DataTypeWrapper>].self,
-                                                    forKey: AnyCodingKey(Keys.dataTypes.rawValue))
+        let wrappedDataTypes = try container.decode(
+            [FailableDecodable<DataTypeWrapper>].self,
+            forKey: AnyCodingKey(Keys.dataTypes.rawValue))
         dataTypes = wrappedDataTypes.compactMap { $0.value?.dataType }
         version = try container.decode(String.self, forKey: AnyCodingKey(Keys.version.rawValue))
     }
@@ -56,9 +57,10 @@ private struct DataTypeWrapper: Decodable {
         let typeString = (try? container.decode(String.self, forKey: typeKey)) ?? Type.class.rawValue
 
         guard let type = Type(rawValue: typeString) else {
-            throw DecodingError.dataCorruptedError(forKey: typeKey,
-                                                   in: container,
-                                                   debugDescription: "Unknown data type: \(typeString)")
+            throw DecodingError.dataCorruptedError(
+                forKey: typeKey,
+                in: container,
+                debugDescription: "Unknown data type: \(typeString)")
         }
 
         switch type {

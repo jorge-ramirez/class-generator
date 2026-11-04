@@ -5,8 +5,6 @@ import Logging
 import PathKit
 import Stencil
 
-// swiftlint:disable file_length
-
 internal enum ClassGeneratorError: Error {
     case duplicateDataTypeDefined(String)
     case failedToEncodeDataType(String)
@@ -66,7 +64,7 @@ internal class ClassGenerator {
         try createOutputDirectoryIfNecessary()
 
         // validate the paths
-		try validatePaths()
+        try validatePaths()
 
         guard let outputDirectoryPath = outputDirectoryPath else {
             throw ClassGeneratorError.outputDirectoryWasNotSpecified
@@ -90,13 +88,13 @@ internal class ClassGenerator {
         let templateEnvironment = Environment(loader: templateLoader, extensions: [templateExtension])
 
         // generate a data type file for each data type
-        try dataTypes.forEach {
-            let outFileName = $0.name + "." + templateFileExtension
+        for dataType in dataTypes {
+            let outFileName = dataType.name + "." + templateFileExtension
             let outputFilePath = outputDirectoryPath + Path(outFileName)
             logger.info("Generating output file: \(outFileName)")
 
             do {
-                let objectDictionary = try jsonObject(for: $0)
+                let objectDictionary = try jsonObject(for: dataType)
                 let output = try templateEnvironment.renderTemplate(name: templateFileName, context: objectDictionary)
                 try outputFilePath.write(output, encoding: .utf8)
             } catch let error as TemplateSyntaxError {
@@ -125,22 +123,24 @@ internal class ClassGenerator {
     private func parseAllDataTypes() throws -> [DataType] {
         var dataTypes: [DataType] = []
 
-        try schemasDirectoryPath.children().forEach { schemaFilePath in
+        for schemaFilePath in try schemasDirectoryPath.children() {
             guard schemaFilePath.isFile, schemaFilePath.extension == "json" else {
                 logger.warning("Skipping unknown schema file type: \(schemaFilePath.lastComponent)")
-                return
+                continue
             }
 
             logger.info("Parsing schema file: \(schemaFilePath.lastComponent)")
             let schemaFileContents: String = try schemaFilePath.read()
             let schema = try JSONDecoder().decode(Schema.self, from: Data(schemaFileContents.utf8))
 
-            if alphabetizeProperties {
-                schema.dataTypes.compactMap { $0 as? Class }.forEach { $0.alphabetizeProperties() }
-            }
+            for dataType in schema.dataTypes {
+                if alphabetizeProperties, let aClass = dataType as? Class {
+                    aClass.alphabetizeProperties()
+                }
 
-            if alphabetizeEnumValues {
-                schema.dataTypes.compactMap { $0 as? Enum }.forEach { $0.alphabetizeValues() }
+                if alphabetizeEnumValues, let anEnum = dataType as? Enum {
+                    anEnum.alphabetizeValues()
+                }
             }
 
             dataTypes.append(contentsOf: schema.dataTypes)
@@ -167,14 +167,14 @@ internal class ClassGenerator {
 
         return objectDictionary
     }
-    
+
     private func templateParts() -> (directoryPath: Path, fileName: String, fileExtension: String) {
         var templateDirectoryComponents = templateFilePath.components
         _ = templateDirectoryComponents.popLast()
         let templateDirectoryPath = Path(components: templateDirectoryComponents)
         let templateFileName = templateFilePath.lastComponent
         let templateExtension = templateFilePath.extension ?? "txt"
-        
+
         return (directoryPath: templateDirectoryPath, fileName: templateFileName, fileExtension: templateExtension)
     }
 
@@ -182,27 +182,29 @@ internal class ClassGenerator {
         var dataTypeNameToDataTypeDict: [String: DataType] = [:]
 
         // store the data types into the dictionary by name, throw an error when a duplicate data type name is found
-        try dataTypes.forEach {
-            guard dataTypeNameToDataTypeDict[$0.name] == nil else {
-                logger.error("Duplicate data type name defined: \($0.name)")
-                throw ClassGeneratorError.duplicateDataTypeDefined($0.name)
+        for dataType in dataTypes {
+            guard dataTypeNameToDataTypeDict[dataType.name] == nil else {
+                logger.error("Duplicate data type name defined: \(dataType.name)")
+                throw ClassGeneratorError.duplicateDataTypeDefined(dataType.name)
             }
 
-            dataTypeNameToDataTypeDict[$0.name] = $0
+            dataTypeNameToDataTypeDict[dataType.name] = dataType
         }
 
         // ensure all of the specified types exist
-        try dataTypes.forEach {
-            if let aClass = $0 as? Class {
+        for dataType in dataTypes {
+            if let aClass = dataType as? Class {
                 // check all of the class' properties' types
 
-                try aClass.properties.forEach {
-                    if dataTypeNameToDataTypeDict[$0.rawDataType] == nil && !preDefinedTypes.contains($0.rawDataType) {
-                        logger.error("Undefined data type used: \($0.rawDataType)")
-                        throw ClassGeneratorError.undefinedDataTypeUsed($0.rawDataType)
+                for property in aClass.properties {
+                    if dataTypeNameToDataTypeDict[property.rawDataType] == nil
+                        && !preDefinedTypes.contains(property.rawDataType)
+                    {
+                        logger.error("Undefined data type used: \(property.rawDataType)")
+                        throw ClassGeneratorError.undefinedDataTypeUsed(property.rawDataType)
                     }
                 }
-            } else if let anEnum = $0 as? Enum {
+            } else if let anEnum = dataType as? Enum {
                 // check the enum's rawDataType
 
                 if dataTypeNameToDataTypeDict[anEnum.dataType] == nil && !preDefinedTypes.contains(anEnum.dataType) {
@@ -313,8 +315,9 @@ extension ClassGenerator {
             self?.classGenLog(message)
         }
         let javaScriptLogHandlerObject = unsafeBitCast(javaScriptLogHandler, to: AnyObject.self)
-        javaScriptContext.setObject(javaScriptLogHandlerObject,
-                                    forKeyedSubscript: "classGenLog" as (NSCopying & NSObjectProtocol)) // swiftlint:disable:this force_unwrapping line_length
+        javaScriptContext.setObject(
+            javaScriptLogHandlerObject,
+            forKeyedSubscript: "classGenLog" as (NSCopying & NSObjectProtocol))
         _ = javaScriptContext.evaluateScript("classGenLog")
 
         // expose the registerPreDefinedTypes method to JavaScript
@@ -323,8 +326,9 @@ extension ClassGenerator {
             self?.registerPreDefinedTypes(types)
         }
         let registerPreDefinedTypesHandlerObject = unsafeBitCast(registerPreDefinedTypesHandler, to: AnyObject.self)
-        javaScriptContext.setObject(registerPreDefinedTypesHandlerObject,
-                                    forKeyedSubscript: "registerPreDefinedTypes" as (NSCopying & NSObjectProtocol)) // swiftlint:disable:this force_unwrapping line_length
+        javaScriptContext.setObject(
+            registerPreDefinedTypesHandlerObject,
+            forKeyedSubscript: "registerPreDefinedTypes" as (NSCopying & NSObjectProtocol))
         _ = javaScriptContext.evaluateScript("registerPreDefinedTypes")
 
         // expose the registerFilter method to JavaScript
@@ -333,8 +337,9 @@ extension ClassGenerator {
             self?.registerJavaScriptFilter(filterName: filterName, functionName: functionName, type: type)
         }
         let registerFilterHandlerObject = unsafeBitCast(registerFilterHandler, to: AnyObject.self)
-        javaScriptContext.setObject(registerFilterHandlerObject,
-                                    forKeyedSubscript: "registerFilter" as (NSCopying & NSObjectProtocol)) // swiftlint:disable:this force_unwrapping line_length
+        javaScriptContext.setObject(
+            registerFilterHandlerObject,
+            forKeyedSubscript: "registerFilter" as (NSCopying & NSObjectProtocol))
         _ = javaScriptContext.evaluateScript("registerFilter")
 
         // expose the registerTag method to JavaScript
@@ -343,8 +348,9 @@ extension ClassGenerator {
             self?.registerJavaScriptTag(tagName: tagName, functionName: functionName)
         }
         let registerTagHandlerObject = unsafeBitCast(registerTagHandler, to: AnyObject.self)
-        javaScriptContext.setObject(registerTagHandlerObject,
-                                    forKeyedSubscript: "registerTag" as (NSCopying & NSObjectProtocol)) // swiftlint:disable:this force_unwrapping line_length
+        javaScriptContext.setObject(
+            registerTagHandlerObject,
+            forKeyedSubscript: "registerTag" as (NSCopying & NSObjectProtocol))
         _ = javaScriptContext.evaluateScript("registerTag")
     }
 
@@ -373,10 +379,10 @@ extension ClassGenerator {
             return
         }
 
-        try pluginsDirectoryPath.children().forEach { pluginFilePath in
+        for pluginFilePath in try pluginsDirectoryPath.children() {
             guard pluginFilePath.isFile, pluginFilePath.extension == "js" else {
                 logger.warning("Skipping unknown plugin file type: \(pluginFilePath.lastComponent)")
-                return
+                continue
             }
 
             logger.info("Loading plugin: \(pluginFilePath.lastComponent)")
@@ -414,7 +420,8 @@ extension ClassGenerator {
             }
 
             guard let javaScriptValue = javaScriptFunction.call(withArguments: [context.flatten()]),
-                    let value = javaScriptValue.toString() else {
+                let value = javaScriptValue.toString()
+            else {
                 throw TemplateSyntaxError("Error while calling JavaScript tag function: " + functionName)
             }
 

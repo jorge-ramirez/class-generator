@@ -61,7 +61,7 @@ internal class Property: Codable {
             "isCollection",
             "isOptional",
             "name",
-            "rawDataType"
+            "rawDataType",
         ]
     }
 

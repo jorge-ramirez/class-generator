@@ -20,27 +20,32 @@ internal struct GenerateCommand: ParsableCommand {
 
     // MARK: - Options
 
-    @Flag(name: .customLong("alphabetize-enum-values"),
-          help: "The generated enum values will be listed alphabetical order.")
+    @Flag(
+        name: .customLong("alphabetize-enum-values"),
+        help: "The generated enum values will be listed alphabetical order.")
     internal var alphabetizeEnumValues: Bool = false
 
-    @Flag(name: .customLong("alphabetize-properties"),
-          help: "The generated class properties will be listed alphabetical order.")
+    @Flag(
+        name: .customLong("alphabetize-properties"),
+        help: "The generated class properties will be listed alphabetical order.")
     internal var alphabetizeProperties: Bool = false
 
-    @Option(name: .customLong("output-directory-path"),
-            help: "The output directory where all generated files will be saved to.")
+    @Option(
+        name: .customLong("output-directory-path"),
+        help: "The output directory where all generated files will be saved to.")
     internal var outputDirectoryPath: String?
 
-    @Option(name: .customLong("plugins-directory-path"),
-            help: "A directory containing plugins which will be loaded at runtime.")
+    @Option(
+        name: .customLong("plugins-directory-path"),
+        help: "A directory containing plugins which will be loaded at runtime.")
     internal var pluginsDirectoryPath: String?
 
     // MARK: - Command
 
     internal mutating func run() throws {
-        let generator = ClassGenerator(schemasDirectoryPath: Path(schemasDirectoryPath),
-                                       templateFilePath: Path(templateFilePath))
+        let generator = ClassGenerator(
+            schemasDirectoryPath: Path(schemasDirectoryPath),
+            templateFilePath: Path(templateFilePath))
 
         generator.alphabetizeEnumValues = alphabetizeEnumValues
         generator.alphabetizeProperties = alphabetizeProperties

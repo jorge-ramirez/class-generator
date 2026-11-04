@@ -53,8 +53,9 @@ internal enum JSONValue: Codable {
         } else if let value = try? container.decode([String: JSONValue].self) {
             self = .object(value)
         } else {
-            throw DecodingError.dataCorruptedError(in: container,
-                                                   debugDescription: "Unsupported JSON value")
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Unsupported JSON value")
         }
     }
 
@@ -81,7 +82,7 @@ internal enum JSONValue: Codable {
 
 }
 
-internal extension KeyedDecodingContainer where Key == AnyCodingKey {
+extension KeyedDecodingContainer where Key == AnyCodingKey {
 
     /// Decodes every key which is not part of `knownKeys`.
     func decodeExtras(excluding knownKeys: Set<String>) throws -> [String: JSONValue] {
@@ -96,7 +97,7 @@ internal extension KeyedDecodingContainer where Key == AnyCodingKey {
 
 }
 
-internal extension KeyedEncodingContainer where Key == AnyCodingKey {
+extension KeyedEncodingContainer where Key == AnyCodingKey {
 
     /// Encodes every preserved JSON key which is not part of the model.
     mutating func encodeExtras(_ extras: [String: JSONValue]) throws {
