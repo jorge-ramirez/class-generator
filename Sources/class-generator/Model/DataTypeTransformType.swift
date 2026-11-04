@@ -29,7 +29,7 @@ internal class DataTypeTransformType: TransformType {
     internal func transformFromJSON(_ value: Any?) -> [DataType]? {
         // convert the JSON into DataType objects
 
-        return (value as? [[String: Any]])?.flatMap {
+        return (value as? [[String: Any]])?.compactMap {
             let typeString = $0["type"] as? String ?? Type.class.rawValue
             guard let type = Type(rawValue: typeString) else {
                 return nil
@@ -37,9 +37,9 @@ internal class DataTypeTransformType: TransformType {
 
             switch type {
             case .class:
-                return Class(JSON: $0, context: context)
+                return try? Class(JSON: $0, context: context)
             case .enum:
-                return Enum(JSON: $0, context: context)
+                return try? Enum(JSON: $0, context: context)
             }
         }
     }

@@ -239,16 +239,19 @@ registerTag("myTag", "myTag")
 ## General Usage:
 
 ```
-> class-generator help
+> class-generator --help
 
-Usage: class-generator <command> [options]
+OVERVIEW: class-generator - Generate classes from JSON schemas
 
-class-generator - Generate classes from JSON schemas
+USAGE: class-generator <subcommand>
 
-Commands:
-  generate        Generates an output file for each class definition found in the specified schemas, using the specified template.
-  help            Prints this help information
-  version         Prints the current version of this app
+OPTIONS:
+  --version               Show the version.
+  -h, --help              Show help information.
+
+SUBCOMMANDS:
+  generate                Generates an output file for each data type found in
+                          the specified schemas.
 ```
 
 ## generate command
@@ -260,13 +263,18 @@ This command will generate a class file for each class represented in the JSON s
 ```
 > class-generator generate --help
 
-Usage: class-generator generate <schemasDirectoryPath> <templateFilePath> [options]
+USAGE: class-generator generate <schemas-directory-path> <template-file-path> [options]
 
-Options:
-  --alphabetize-properties            The generated properties will be listed alphabetical order.
-  --output-directory-path <value>     The output directory where all generated files will be saved to.  A temporary directory will be used if none is provided.
-  --plugins-directory-path <value>    A directory containing plugins which will be loaded at runtime.
-  -h, --help                          Show help information for this command
+ARGUMENTS:
+  <schemas-directory-path>    The directory containing the JSON schema files.
+  <template-file-path>        The template file used to generate the output files.
+
+OPTIONS:
+  --alphabetize-enum-values             The generated enum values will be listed alphabetical order.
+  --alphabetize-properties              The generated class properties will be listed alphabetical order.
+  --output-directory-path <value>       The output directory where all generated files will be saved to.  A temporary directory will be used if none is provided.
+  --plugins-directory-path <value>      A directory containing plugins which will be loaded at runtime.
+  -h, --help                            Show help information.
 ```
 
 #### Example
@@ -294,7 +302,7 @@ class-generator uses the [Swift Package Manager](https://github.com/apple/swift-
 > swift build
 Fetching https://github.com/kylef/PathKit.git
 Fetching https://github.com/kylef/Stencil.git
-Fetching https://github.com/jakeheis/SwiftCLI.git
+Fetching https://github.com/apple/swift-argument-parser.git
 Fetching https://github.com/Hearst-DD/ObjectMapper.git
 Fetching https://github.com/IBM-Swift/HeliumLogger.git
 Fetching https://github.com/kylef/Spectre.git
@@ -302,7 +310,7 @@ Fetching https://github.com/IBM-Swift/LoggerAPI.git
 ...
 Compile Swift Module 'Spectre' (8 sources)
 Compile Swift Module 'LoggerAPI' (1 sources)
-Compile Swift Module 'SwiftCLI' (25 sources)
+Compile Swift Module 'ArgumentParser'
 Compile Swift Module 'ObjectMapper' (23 sources)
 Compile Swift Module 'HeliumLogger' (2 sources)
 Compile Swift Module 'class_generator' (6 sources)
@@ -317,7 +325,7 @@ You can then find the binary at `.build/debug/class-generator`.
 
 - [PathKit](https://github.com/kylef/PathKit)
 - [Stencil](https://github.com/kylef/Stencil)
-- [SwiftCLI](https://github.com/jakeheis/SwiftCLI)
+- [swift-argument-parser](https://github.com/apple/swift-argument-parser)
 - [ObjectMapper](https://github.com/Hearst-DD/ObjectMapper)
 - [HeliumLogger](https://github.com/IBM-Swift/HeliumLogger)
 

@@ -1,43 +1,56 @@
+import ArgumentParser
 import Foundation
 import LoggerAPI
 import PathKit
-import SwiftCLI
 
-internal class GenerateCommand: SwiftCLI.Command {
+internal struct GenerateCommand: ParsableCommand {
 
-    // MARK: - Private Properties
+    // MARK: - Command Configuration
 
-    // parameters, ordered by how they will be parsed
-    private let schemasDirectoryPath: Parameter = Parameter()
-    private let templateFilePath: Parameter = Parameter()
+    internal static let configuration: CommandConfiguration = CommandConfiguration(
+        commandName: "generate",
+        abstract: "Generates an output file for each data type found in the specified schemas.")
 
-    // options
-    private let alphabetizeEnumValues: Flag = Flag("--alphabetize-enum-values",
-        description: "The generated enum values will be listed alphabetical order.")
-    private let alphabetizeProperties: Flag = Flag("--alphabetize-properties",
-        description: "The generated class properties will be listed alphabetical order.")
-    private let outputDirectoryPath: Key<String> = Key<String>("--output-directory-path",
-        description: "The output directory where all generated files will be saved to.")
-    private let pluginsDirectoryPath: Key<String> = Key<String>("--plugins-directory-path",
-        description: "A directory containing plugins which will be loaded at runtime.")
+    // MARK: - Arguments
 
-    // MARK: - Command Protocol
+    @Argument(help: "The directory containing the JSON schema files.")
+    internal var schemasDirectoryPath: String
 
-    internal let name: String = "generate"
-    internal let shortDescription: String = "Generates an output file for each data type found in the specified schemas."
+    @Argument(help: "The template file used to generate the output files.")
+    internal var templateFilePath: String
 
-    internal func execute() throws {
-        let generator = ClassGenerator(schemasDirectoryPath: Path(schemasDirectoryPath.value),
-                                       templateFilePath: Path(templateFilePath.value))
+    // MARK: - Options
 
-        generator.alphabetizeEnumValues = alphabetizeEnumValues.value
-        generator.alphabetizeProperties = alphabetizeProperties.value
+    @Flag(name: .customLong("alphabetize-enum-values"),
+          help: "The generated enum values will be listed alphabetical order.")
+    internal var alphabetizeEnumValues: Bool = false
 
-        if let outputDirectoryPath = outputDirectoryPath.value {
+    @Flag(name: .customLong("alphabetize-properties"),
+          help: "The generated class properties will be listed alphabetical order.")
+    internal var alphabetizeProperties: Bool = false
+
+    @Option(name: .customLong("output-directory-path"),
+            help: "The output directory where all generated files will be saved to.")
+    internal var outputDirectoryPath: String?
+
+    @Option(name: .customLong("plugins-directory-path"),
+            help: "A directory containing plugins which will be loaded at runtime.")
+    internal var pluginsDirectoryPath: String?
+
+    // MARK: - Command
+
+    internal mutating func run() throws {
+        let generator = ClassGenerator(schemasDirectoryPath: Path(schemasDirectoryPath),
+                                       templateFilePath: Path(templateFilePath))
+
+        generator.alphabetizeEnumValues = alphabetizeEnumValues
+        generator.alphabetizeProperties = alphabetizeProperties
+
+        if let outputDirectoryPath = outputDirectoryPath {
             generator.outputDirectoryPath = Path(outputDirectoryPath)
         }
 
-        if let pluginsDirectoryPath = pluginsDirectoryPath.value {
+        if let pluginsDirectoryPath = pluginsDirectoryPath {
             generator.pluginsDirectoryPath = Path(pluginsDirectoryPath)
         }
 
