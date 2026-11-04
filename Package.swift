@@ -18,6 +18,9 @@ let package = Package(
                 "Stencil",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "Logging", package: "swift-log"),
-            ])
+            ]),
+        .testTarget(
+            name: "class-generatorTests",
+            dependencies: ["class-generator"]),
     ]
 )

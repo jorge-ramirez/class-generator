@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build
+
+      - name: Run tests
+        run: swift test
+
+      - name: Lint
+        run: swift format lint --strict --recursive Sources Tests Package.swift
+
+      - name: Generate and type-check example
+        run: |
+          output_directory="$(mktemp -d)"
+          .build/debug/class-generator generate \
+            Example/schemas \
+            Example/templates/example-template.swift \
+            --plugins-directory-path Example/plugins \
+            --output-directory-path "$output_directory" \
+            --alphabetize-properties \
+            --alphabetize-enum-values
+          swiftc -typecheck "$output_directory"/*.swift

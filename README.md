@@ -1,6 +1,6 @@
 # class-generator
 
-[![Build Status](https://travis-ci.org/jorge-ramirez/class-generator.svg?branch=master)](https://travis-ci.org/jorge-ramirez/class-generator)
+[![CI](https://github.com/jorge-ramirez/class-generator/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/jorge-ramirez/class-generator/actions/workflows/ci.yml)
 
 `class-generator` is a macOS command line tool which generates classes based on JSON files used to describe the classes and their properties.  It was created to help reduce the manual process of creating mapper classes used in REST service calls in iOS and macOS apps.  Since it is template based, it can be used to generate classes for any language.
 
