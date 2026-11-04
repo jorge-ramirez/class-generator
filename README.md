@@ -337,14 +337,12 @@ class-generator uses the [Swift Package Manager](https://github.com/apple/swift-
 Fetching https://github.com/kylef/PathKit.git
 Fetching https://github.com/kylef/Stencil.git
 Fetching https://github.com/apple/swift-argument-parser.git
-Fetching https://github.com/IBM-Swift/HeliumLogger.git
+Fetching https://github.com/apple/swift-log.git
 Fetching https://github.com/kylef/Spectre.git
-Fetching https://github.com/IBM-Swift/LoggerAPI.git
 ...
 Compile Swift Module 'Spectre' (8 sources)
-Compile Swift Module 'LoggerAPI' (1 sources)
 Compile Swift Module 'ArgumentParser'
-Compile Swift Module 'HeliumLogger' (2 sources)
+Compile Swift Module 'Logging'
 Compile Swift Module 'class_generator' (6 sources)
 Linking ./.build/x86_64-apple-macosx10.10/debug/class-generator
 ```
@@ -358,5 +356,5 @@ You can then find the binary at `.build/debug/class-generator`.
 - [PathKit](https://github.com/kylef/PathKit)
 - [Stencil](https://github.com/kylef/Stencil)
 - [swift-argument-parser](https://github.com/apple/swift-argument-parser)
-- [HeliumLogger](https://github.com/IBM-Swift/HeliumLogger)
+- [swift-log](https://github.com/apple/swift-log)
 

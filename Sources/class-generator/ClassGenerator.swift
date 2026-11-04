@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 import JavaScriptCore
-import LoggerAPI
+import Logging
 import PathKit
 import Stencil
 
@@ -38,6 +38,7 @@ internal class ClassGenerator {
     // MARK: - Private Properties
 
     private let javaScriptContext: JSContext
+    private let logger: Logger
     private var preDefinedTypes: Set<String>
     private let schemasDirectoryPath: Path
     private let templateExtension: Extension
@@ -49,6 +50,7 @@ internal class ClassGenerator {
         self.alphabetizeEnumValues = false
         self.alphabetizeProperties = false
         self.javaScriptContext = JSContext()
+        self.logger = Logger(label: "class-generator")
         self.outputDirectoryPath = nil
         self.pluginsDirectoryPath = nil
         self.preDefinedTypes = []
@@ -91,14 +93,14 @@ internal class ClassGenerator {
         try dataTypes.forEach {
             let outFileName = $0.name + "." + templateFileExtension
             let outputFilePath = outputDirectoryPath + Path(outFileName)
-            Log.info("Generating output file: " + outFileName)
+            logger.info("Generating output file: \(outFileName)")
 
             do {
                 let objectDictionary = try jsonObject(for: $0)
                 let output = try templateEnvironment.renderTemplate(name: templateFileName, context: objectDictionary)
                 try outputFilePath.write(output, encoding: .utf8)
             } catch let error as TemplateSyntaxError {
-                Log.error("Template syntax error: " + error.description)
+                logger.error("Template syntax error: \(error.description)")
                 throw error
             }
         }
@@ -117,7 +119,7 @@ internal class ClassGenerator {
         let tempDirectory = try Path.uniqueTemporary()
         outputDirectoryPath = tempDirectory
 
-        Log.info("Created temporary output directory: " + tempDirectory.absolute().string)
+        logger.info("Created temporary output directory: \(tempDirectory.absolute().string)")
     }
 
     private func parseAllDataTypes() throws -> [DataType] {
@@ -125,11 +127,11 @@ internal class ClassGenerator {
 
         try schemasDirectoryPath.children().forEach { schemaFilePath in
             guard schemaFilePath.isFile, schemaFilePath.extension == "json" else {
-                Log.warning("Skipping unknown schema file type: \(schemaFilePath.lastComponent)")
+                logger.warning("Skipping unknown schema file type: \(schemaFilePath.lastComponent)")
                 return
             }
 
-            Log.info("Parsing schema file: " + schemaFilePath.lastComponent)
+            logger.info("Parsing schema file: \(schemaFilePath.lastComponent)")
             let schemaFileContents: String = try schemaFilePath.read()
             let schema = try JSONDecoder().decode(Schema.self, from: Data(schemaFileContents.utf8))
 
@@ -159,7 +161,7 @@ internal class ClassGenerator {
         }
 
         guard let objectDictionary = try JSONSerialization.jsonObject(with: encodedData) as? [String: Any] else {
-            Log.error("Could not encode data type: " + dataType.name)
+            logger.error("Could not encode data type: \(dataType.name)")
             throw ClassGeneratorError.failedToEncodeDataType(dataType.name)
         }
 
@@ -182,7 +184,7 @@ internal class ClassGenerator {
         // store the data types into the dictionary by name, throw an error when a duplicate data type name is found
         try dataTypes.forEach {
             guard dataTypeNameToDataTypeDict[$0.name] == nil else {
-                Log.error("Duplicate data type name defined: " + $0.name)
+                logger.error("Duplicate data type name defined: \($0.name)")
                 throw ClassGeneratorError.duplicateDataTypeDefined($0.name)
             }
 
@@ -196,7 +198,7 @@ internal class ClassGenerator {
 
                 try aClass.properties.forEach {
                     if dataTypeNameToDataTypeDict[$0.rawDataType] == nil && !preDefinedTypes.contains($0.rawDataType) {
-                        Log.error("Undefined data type used: " + $0.rawDataType)
+                        logger.error("Undefined data type used: \($0.rawDataType)")
                         throw ClassGeneratorError.undefinedDataTypeUsed($0.rawDataType)
                     }
                 }
@@ -204,7 +206,7 @@ internal class ClassGenerator {
                 // check the enum's rawDataType
 
                 if dataTypeNameToDataTypeDict[anEnum.dataType] == nil && !preDefinedTypes.contains(anEnum.dataType) {
-                    Log.error("Undefined data type used: " + anEnum.dataType)
+                    logger.error("Undefined data type used: \(anEnum.dataType)")
                     throw ClassGeneratorError.undefinedDataTypeUsed(anEnum.dataType)
                 }
             } else {
@@ -217,7 +219,7 @@ internal class ClassGenerator {
 
     private func validateOutputDirectoryPath() throws {
         guard let outputDirectoryPath = outputDirectoryPath else {
-            Log.error("No output directory was specified.")
+            logger.error("No output directory was specified.")
             throw ClassGeneratorError.outputDirectoryWasNotSpecified
         }
 
@@ -225,19 +227,19 @@ internal class ClassGenerator {
 
         // ensure the output directory exists
         guard outputDirectoryPath.exists else {
-            Log.error("The output directory specified does not exist: " + absolutePath)
+            logger.error("The output directory specified does not exist: \(absolutePath)")
             throw ClassGeneratorError.outputDirectoryDoesNotExist(absolutePath)
         }
 
         // ensure the output directory is a directory
         guard outputDirectoryPath.isDirectory else {
-            Log.error("The output directory specified is not a directory: " + absolutePath)
+            logger.error("The output directory specified is not a directory: \(absolutePath)")
             throw ClassGeneratorError.outputDirectoryIsNotADirectory(absolutePath)
         }
 
         // ensure the output directory is empty
         guard try outputDirectoryPath.children().isEmpty else {
-            Log.error("The output directory specified is not empty: " + absolutePath)
+            logger.error("The output directory specified is not empty: \(absolutePath)")
             throw ClassGeneratorError.outputDirectoryIsNotEmpty(absolutePath)
         }
     }
@@ -254,19 +256,19 @@ internal class ClassGenerator {
 
         // ensure the schemas directory exists
         guard schemasDirectoryPath.exists else {
-            Log.error("The schemas directory specified does not exist: " + absolutePath)
+            logger.error("The schemas directory specified does not exist: \(absolutePath)")
             throw ClassGeneratorError.schemasDirectoryDoesNotExist(absolutePath)
         }
 
         // ensure the schemas directory is a directory
         guard schemasDirectoryPath.isDirectory else {
-            Log.error("The schemas directory specified is not a directory: " + absolutePath)
+            logger.error("The schemas directory specified is not a directory: \(absolutePath)")
             throw ClassGeneratorError.schemasDirectoryIsNotADirectory(absolutePath)
         }
 
         // ensure the schemas directory is not empty
         guard try !schemasDirectoryPath.children().isEmpty else {
-            Log.error("The schemas directory specified is empty: " + absolutePath)
+            logger.error("The schemas directory specified is empty: \(absolutePath)")
             throw ClassGeneratorError.schemasDirectoryIsEmpty(absolutePath)
         }
     }
@@ -276,13 +278,13 @@ internal class ClassGenerator {
 
         // ensure the template file exists
         guard templateFilePath.exists else {
-            Log.error("The template file specified does not exist: " + absolutePath)
+            logger.error("The template file specified does not exist: \(absolutePath)")
             throw ClassGeneratorError.templateFileDoesNotExist(absolutePath)
         }
 
         // ensure the template file is a file
         guard templateFilePath.isFile else {
-            Log.error("The template file specified is not a file: " + absolutePath)
+            logger.error("The template file specified is not a file: \(absolutePath)")
             throw ClassGeneratorError.templateFileIsNotAFile(absolutePath)
         }
     }
@@ -294,14 +296,14 @@ internal class ClassGenerator {
 extension ClassGenerator {
 
     private func classGenLog(_ message: String) {
-        Log.info(message)
+        logger.info("\(message)")
     }
 
     private func configureJavaScriptContext() throws {
         // configure an exception handler
-        javaScriptContext.exceptionHandler = { context, exception in
+        javaScriptContext.exceptionHandler = { [weak self] context, exception in
             if let exceptionString = exception?.toString() {
-                Log.error("Plugin Exception: " + exceptionString)
+                self?.logger.error("Plugin Exception: \(exceptionString)")
                 exit(1)
             }
         }
@@ -361,7 +363,7 @@ extension ClassGenerator {
         case "string":
             return javaScriptValue?.toString()
         default:
-            Log.error("Unknown JavaScript type: " + javaScriptType)
+            logger.error("Unknown JavaScript type: \(javaScriptType)")
             return javaScriptValue?.toString()
         }
     }
@@ -373,22 +375,22 @@ extension ClassGenerator {
 
         try pluginsDirectoryPath.children().forEach { pluginFilePath in
             guard pluginFilePath.isFile, pluginFilePath.extension == "js" else {
-                Log.warning("Skipping unknown plugin file type: \(pluginFilePath.lastComponent)")
+                logger.warning("Skipping unknown plugin file type: \(pluginFilePath.lastComponent)")
                 return
             }
 
-            Log.info("Loading plugin: " + pluginFilePath.lastComponent)
+            logger.info("Loading plugin: \(pluginFilePath.lastComponent)")
             let pluginFileContents: String = try pluginFilePath.read()
             _ = javaScriptContext.evaluateScript(pluginFileContents)
         }
     }
 
     private func registerJavaScriptFilter(filterName: String, functionName: String, type: String) {
-        Log.info("Registering JavaScript filter: " + filterName)
+        logger.info("Registering JavaScript filter: \(filterName)")
 
         templateExtension.registerFilter(filterName) { [weak self] value in
             guard let javaScriptFunction = self?.javaScriptContext.objectForKeyedSubscript(functionName) else {
-                Log.error("Could not find JavaScript filter function: " + functionName)
+                self?.logger.error("Could not find JavaScript filter function: \(functionName)")
                 throw TemplateSyntaxError("Could not find JavaScript filter function: " + functionName)
             }
 
@@ -403,11 +405,11 @@ extension ClassGenerator {
     }
 
     private func registerJavaScriptTag(tagName: String, functionName: String) {
-        Log.info("Registering JavaScript tag: " + tagName)
+        logger.info("Registering JavaScript tag: \(tagName)")
 
         templateExtension.registerSimpleTag(tagName) { [weak self] context in
             guard let javaScriptFunction = self?.javaScriptContext.objectForKeyedSubscript(functionName) else {
-                Log.error("Could not find JavaScript tag function: " + functionName)
+                self?.logger.error("Could not find JavaScript tag function: \(functionName)")
                 throw TemplateSyntaxError("Could not find JavaScript tag function: " + functionName)
             }
 
@@ -421,7 +423,7 @@ extension ClassGenerator {
     }
 
     private func registerPreDefinedTypes(_ typeNames: [String]) {
-        Log.info("Registering pre-defined types: \(typeNames)")
+        logger.info("Registering pre-defined types: \(typeNames)")
         preDefinedTypes = Set<String>(typeNames)
     }
 
@@ -434,19 +436,19 @@ extension ClassGenerator {
 
         // ensure the plugins directory exists
         guard pluginsDirectoryPath.exists else {
-            Log.error("The plugin directory specified does not exist: " + absolutePath)
+            logger.error("The plugin directory specified does not exist: \(absolutePath)")
             throw ClassGeneratorError.pluginsDirectoryDoesNotExist(absolutePath)
         }
 
         // ensure the plugins directory is a directory
         guard pluginsDirectoryPath.isDirectory else {
-            Log.error("The plugin directory specified is not a directory: " + absolutePath)
+            logger.error("The plugin directory specified is not a directory: \(absolutePath)")
             throw ClassGeneratorError.pluginsDirectoryIsNotADirectory(absolutePath)
         }
 
         // ensure the plugins directory is not empty
         guard try !pluginsDirectoryPath.children().isEmpty else {
-            Log.error("The plugin directory specified is empty: " + absolutePath)
+            logger.error("The plugin directory specified is empty: \(absolutePath)")
             throw ClassGeneratorError.pluginsDirectoryIsEmpty(absolutePath)
         }
     }

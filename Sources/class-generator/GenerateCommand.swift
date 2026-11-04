@@ -1,6 +1,5 @@
 import ArgumentParser
 import Foundation
-import LoggerAPI
 import PathKit
 
 internal struct GenerateCommand: ParsableCommand {
