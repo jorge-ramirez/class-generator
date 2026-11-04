@@ -2,7 +2,6 @@ import AppKit
 import Foundation
 import JavaScriptCore
 import LoggerAPI
-import ObjectMapper
 import PathKit
 import Stencil
 
@@ -10,6 +9,7 @@ import Stencil
 
 internal enum ClassGeneratorError: Error {
     case duplicateDataTypeDefined(String)
+    case failedToEncodeDataType(String)
     case outputDirectoryDoesNotExist(String)
     case outputDirectoryIsNotADirectory(String)
     case outputDirectoryIsNotEmpty(String)
@@ -94,7 +94,7 @@ internal class ClassGenerator {
             Log.info("Generating output file: " + outFileName)
 
             do {
-                let objectDictionary = Mapper().toJSON($0)
+                let objectDictionary = try jsonObject(for: $0)
                 let output = try templateEnvironment.renderTemplate(name: templateFileName, context: objectDictionary)
                 try outputFilePath.write(output, encoding: .utf8)
             } catch let error as TemplateSyntaxError {
@@ -122,9 +122,6 @@ internal class ClassGenerator {
 
     private func parseAllDataTypes() throws -> [DataType] {
         var dataTypes: [DataType] = []
-        let context = MappingContext(alphabetizeEnumValues: alphabetizeEnumValues,
-                                     alphabetizeProperties: alphabetizeProperties)
-        let mapper = Mapper<Schema>(context: context)
 
         try schemasDirectoryPath.children().forEach { schemaFilePath in
             guard schemaFilePath.isFile, schemaFilePath.extension == "json" else {
@@ -134,11 +131,39 @@ internal class ClassGenerator {
 
             Log.info("Parsing schema file: " + schemaFilePath.lastComponent)
             let schemaFileContents: String = try schemaFilePath.read()
-            let schema = try mapper.map(JSONString: schemaFileContents)
+            let schema = try JSONDecoder().decode(Schema.self, from: Data(schemaFileContents.utf8))
+
+            if alphabetizeProperties {
+                schema.dataTypes.compactMap { $0 as? Class }.forEach { $0.alphabetizeProperties() }
+            }
+
+            if alphabetizeEnumValues {
+                schema.dataTypes.compactMap { $0 as? Enum }.forEach { $0.alphabetizeValues() }
+            }
+
             dataTypes.append(contentsOf: schema.dataTypes)
         }
 
         return dataTypes
+    }
+
+    private func jsonObject(for dataType: DataType) throws -> [String: Any] {
+        let encodedData: Data
+
+        if let aClass = dataType as? Class {
+            encodedData = try JSONEncoder().encode(aClass)
+        } else if let anEnum = dataType as? Enum {
+            encodedData = try JSONEncoder().encode(anEnum)
+        } else {
+            throw ClassGeneratorError.unhandledDataType
+        }
+
+        guard let objectDictionary = try JSONSerialization.jsonObject(with: encodedData) as? [String: Any] else {
+            Log.error("Could not encode data type: " + dataType.name)
+            throw ClassGeneratorError.failedToEncodeDataType(dataType.name)
+        }
+
+        return objectDictionary
     }
     
     private func templateParts() -> (directoryPath: Path, fileName: String, fileExtension: String) {

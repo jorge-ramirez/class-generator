@@ -1,7 +1,6 @@
 import Foundation
-import ObjectMapper
 
-internal class DataType: ImmutableMappable {
+internal class DataType: Codable {
 
     // MARK: - Public Properties
 
@@ -13,13 +12,6 @@ internal class DataType: ImmutableMappable {
     /// Defaults to "class"
     internal let type: Type
 
-    // MARK: - Private Enums
-
-    private enum Keys: String {
-        case name
-        case type
-    }
-
     // MARK: - Initialization
 
     internal init(name: String, type: Type) {
@@ -27,16 +19,20 @@ internal class DataType: ImmutableMappable {
         self.type = type
     }
 
-    internal required init(map: Map) throws {
-        name = try map.value(Keys.name.rawValue)
-        type = (try? map.value(Keys.type.rawValue)) ?? Type.class
+    internal required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: AnyCodingKey.self)
+
+        name = try container.decode(String.self, forKey: AnyCodingKey("name"))
+        type = (try? container.decode(Type.self, forKey: AnyCodingKey("type"))) ?? .class
     }
 
-    // MARK: - Mappable
+    // MARK: - Encodable
 
-    internal func mapping(map: Map) {
-        name >>> map[Keys.name.rawValue]
-        type >>> map[Keys.type.rawValue]
+    internal func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: AnyCodingKey.self)
+
+        try container.encode(name, forKey: AnyCodingKey("name"))
+        try container.encode(type, forKey: AnyCodingKey("type"))
     }
 
 }

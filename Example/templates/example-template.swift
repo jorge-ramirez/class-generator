@@ -7,9 +7,8 @@
 // swiftlint:disable type_name
 
 import Foundation
-import ObjectMapper
 
-{% if type == "class" %}internal class {{ name }}: ImmutableMappable {
+{% if type == "class" %}internal class {{ name }}: Codable {
 
     // MARK: - Public Properties
     {% for property in properties %}
@@ -17,7 +16,7 @@ import ObjectMapper
 
     // MARK: - Private Enums
 
-    fileprivate enum Keys: String { {% for property in properties %}
+    private enum CodingKeys: String, CodingKey { {% for property in properties %}
         case {{ property.name }}{% endfor %}
     }
 
@@ -28,18 +27,53 @@ import ObjectMapper
         self.{{ property.name }} = {{ property.name }}{% endfor %}
     }
 
-    required init(map: Map) throws { {% for property in properties %}{% if property.rawDataType == "Date" %}
-        {{ property.name }} = try{% if property.isOptional %}?{% endif %} map.value(Keys.{{ property.name }}.rawValue, using: ISO8601DateTransform()){% else %}
-        {{ property.name }} = try{% if property.isOptional %}?{% endif %} map.value(Keys.{{ property.name }}.rawValue){% endif %}{% endfor %}
+    // MARK: - Decodable
+
+    required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self){% for property in properties %}{% if property.rawDataType == "Date" %}{% if property.isCollection %}{% if property.isOptional %}
+        if let dateStrings = try container.decodeIfPresent([String].self, forKey: .{{ property.name }}) {
+            self.{{ property.name }} = dateStrings.compactMap { {{ name }}.iso8601DateFormatter.date(from: $0) }
+        } else {
+            self.{{ property.name }} = nil
+        }{% else %}
+        let {{ property.name }}DateStrings = try container.decode([String].self, forKey: .{{ property.name }})
+        self.{{ property.name }} = {{ property.name }}DateStrings.compactMap { {{ name }}.iso8601DateFormatter.date(from: $0) }{% endif %}{% else %}{% if property.isOptional %}
+        if let dateString = try container.decodeIfPresent(String.self, forKey: .{{ property.name }}) {
+            self.{{ property.name }} = {{ name }}.iso8601DateFormatter.date(from: dateString)
+        } else {
+            self.{{ property.name }} = nil
+        }{% else %}
+        let {{ property.name }}DateString = try container.decode(String.self, forKey: .{{ property.name }})
+        guard let {{ property.name }} = {{ name }}.iso8601DateFormatter.date(from: {{ property.name }}DateString) else {
+            throw DecodingError.dataCorruptedError(forKey: .{{ property.name }},
+                                                   in: container,
+                                                   debugDescription: "Expected an ISO8601-formatted date string.")
+        }
+        self.{{ property.name }} = {{ property.name }}{% endif %}{% endif %}{% else %}{% if property.isOptional %}
+        self.{{ property.name }} = try container.decodeIfPresent({% if property.isCollection %}[{{ property.rawDataType }}]{% else %}{{ property.rawDataType }}{% endif %}.self, forKey: .{{ property.name }}){% else %}
+        self.{{ property.name }} = try container.decode({% if property.isCollection %}[{{ property.rawDataType }}]{% else %}{{ property.rawDataType }}{% endif %}.self, forKey: .{{ property.name }}){% endif %}{% endif %}{% endfor %}
     }
 
-    // MARK: - Mappable
+    // MARK: - Encodable
 
-    func mapping(map: Map) { {% for property in properties %}{% if property.rawDataType == "Date" %}
-        {{ property.name }} >>> (map[Keys.{{ property.name }}.rawValue], ISO8601DateTransform()){% else %}
-        {{ property.name }} >>> map[Keys.{{ property.name }}.rawValue]{% endif %}{% endfor %}
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self){% for property in properties %}{% if property.rawDataType == "Date" %}{% if property.isCollection %}{% if property.isOptional %}
+        if let {{ property.name }} = {{ property.name }} {
+            try container.encode({{ property.name }}.map { {{ name }}.iso8601DateFormatter.string(from: $0) }, forKey: .{{ property.name }})
+        }{% else %}
+        try container.encode({{ property.name }}.map { {{ name }}.iso8601DateFormatter.string(from: $0) }, forKey: .{{ property.name }}){% endif %}{% else %}{% if property.isOptional %}
+        if let {{ property.name }} = {{ property.name }} {
+            try container.encode({{ name }}.iso8601DateFormatter.string(from: {{ property.name }}), forKey: .{{ property.name }})
+        }{% else %}
+        try container.encode({{ name }}.iso8601DateFormatter.string(from: {{ property.name }}), forKey: .{{ property.name }}){% endif %}{% endif %}{% else %}{% if property.isOptional %}
+        try container.encodeIfPresent({{ property.name }}, forKey: .{{ property.name }}){% else %}
+        try container.encode({{ property.name }}, forKey: .{{ property.name }}){% endif %}{% endif %}{% endfor %}
     }
 
-}{% elif type == "enum" %}internal enum {{ name }}: {{ dataType }}: { {% for value in values %}
+    // MARK: - Date Formatter
+
+    private static let iso8601DateFormatter: ISO8601DateFormatter = ISO8601DateFormatter()
+
+}{% elif type == "enum" %}internal enum {{ name }}: {{ dataType }}, Codable { {% for value in values %}
     case {{ value.name }} = "{{ value.value }}"{% endfor %}
 }{% endif %}

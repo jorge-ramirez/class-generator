@@ -1,7 +1,6 @@
 import Foundation
-import ObjectMapper
 
-internal class Value: ImmutableMappable {
+internal class Value: Codable {
 
     // MARK: - Public Properties
 
@@ -19,42 +18,38 @@ internal class Value: ImmutableMappable {
         case name
         case value
 
-        static let all: [Keys] = [.name, .value]
+        static let all: Set<String> = ["name", "value"]
     }
 
     // MARK: - Private Properties
 
-    /// The original JSON used to populate the Propery object.
-    private var originalJSON: [String: Any]?
+    /// The original JSON used to populate the Value object.
+    private var extraValues: [String: JSONValue]
 
     // MARK: - Initialization
 
     internal init(name: String, value: String) {
         self.name = name
+        self.extraValues = [:]
         self.value = value
     }
 
-    internal required init(map: Map) throws {
-        name = try map.value(Keys.name.rawValue)
-        value = try map.value(Keys.value.rawValue)
+    internal required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: AnyCodingKey.self)
 
-        // save the original JSON data, minus the existing properties
-        let keysToExclude = Keys.all.map { $0.rawValue }
-        originalJSON = map.JSON.filter { key, _ in
-            !keysToExclude.contains(key)
-        }
+        name = try container.decode(String.self, forKey: AnyCodingKey(Keys.name.rawValue))
+        extraValues = try container.decodeExtras(excluding: Keys.all)
+        value = try container.decode(String.self, forKey: AnyCodingKey(Keys.value.rawValue))
     }
 
-    // MARK: - Mappable
+    // MARK: - Encodable
 
-    internal func mapping(map: Map) {
-        // map the original json data
-        originalJSON?.forEach { key, value in
-            value >>> map[key]
-        }
+    internal func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: AnyCodingKey.self)
 
-        name >>> map[Keys.name.rawValue]
-        value >>> map[Keys.value.rawValue]
+        try container.encode(name, forKey: AnyCodingKey(Keys.name.rawValue))
+        try container.encode(value, forKey: AnyCodingKey(Keys.value.rawValue))
+        try container.encodeExtras(extraValues)
     }
 
 }

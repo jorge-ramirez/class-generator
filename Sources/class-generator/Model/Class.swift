@@ -1,76 +1,58 @@
 import Foundation
-import ObjectMapper
 
 internal class Class: DataType {
 
     // MARK: - Public Properties
 
     /// An array of the class' properties.
-    internal let properties: [Property]
+    internal private(set) var properties: [Property]
 
     // MARK: - Private Enums
 
     private enum Keys: String {
         case properties
 
-        static let all: [Keys] = [.properties]
+        static let all: Set<String> = ["name", "properties", "type"]
     }
 
     // MARK: - Private Properties
 
-    /// The original JSON used to populate the Propery object.
-    private var originalJSON: [String: Any]?
+    /// The original JSON used to populate the Class object.
+    private var extraValues: [String: JSONValue]
 
     // MARK: - Initialization
 
     internal init(name: String, properties: [Property]) {
+        self.extraValues = [:]
         self.properties = properties
 
         super.init(name: name, type: .class)
     }
 
-    internal required init(map: Map) throws {
-        properties = try Class.extractProperties(map: map)
+    internal required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: AnyCodingKey.self)
 
-        // save the original JSON data, minus the existing properties
-        let keysToExclude = Keys.all.map { $0.rawValue }
-        originalJSON = map.JSON.filter { key, _ in
-            !keysToExclude.contains(key)
-        }
+        properties = try container.decode([Property].self, forKey: AnyCodingKey(Keys.properties.rawValue))
+        extraValues = try container.decodeExtras(excluding: Keys.all)
 
-        try super.init(map: map)
+        try super.init(from: decoder)
     }
 
-    // MARK: - Mappable
+    // MARK: - Public Methods
 
-    internal override func mapping(map: Map) {
-        // map the original json data
-        originalJSON?.forEach { key, value in
-            value >>> map[key]
-        }
-
-        super.mapping(map: map)
-        properties >>> map[Keys.properties.rawValue]
+    internal func alphabetizeProperties() {
+        properties.sort { $0.name.compare($1.name, options: .caseInsensitive) == .orderedAscending }
     }
 
-    // MARK: - Private Methods
+    // MARK: - Encodable
 
-    private class func extractProperties(map: Map) throws -> [Property] {
-        var properties: [Property] = try map.value(Keys.properties.rawValue)
+    internal override func encode(to encoder: Encoder) throws {
+        try super.encode(to: encoder)
 
-        if shouldAlphabetizeProperties(map: map) {
-            properties.sort { $0.name.compare($1.name, options: .caseInsensitive) == .orderedAscending }
-        }
+        var container = encoder.container(keyedBy: AnyCodingKey.self)
 
-        return properties
-    }
-
-    private class func shouldAlphabetizeProperties(map: Map) -> Bool {
-        guard let context = map.context as? MappingContext else {
-            return false
-        }
-
-        return context.alphabetizeProperties
+        try container.encode(properties, forKey: AnyCodingKey(Keys.properties.rawValue))
+        try container.encodeExtras(extraValues)
     }
 
 }

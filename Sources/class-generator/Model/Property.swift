@@ -1,7 +1,6 @@
 import Foundation
-import ObjectMapper
 
-internal class Property: ImmutableMappable {
+internal class Property: Codable {
 
     // MARK: - Public Properties
 
@@ -49,56 +48,58 @@ internal class Property: ImmutableMappable {
     // MARK: - Private Enums
 
     private enum Keys: String {
-        case name
         case dataType
         case description
         case isCollection
         case isOptional
+        case name
         case rawDataType
 
-        static let all: [Keys] = [.name, .dataType, .description, .isCollection, .isOptional, .rawDataType]
+        static let all: Set<String> = [
+            "dataType",
+            "description",
+            "isCollection",
+            "isOptional",
+            "name",
+            "rawDataType"
+        ]
     }
 
     // MARK: - Private Properties
 
-    /// The original JSON used to populate the Propery object.
-    private var originalJSON: [String: Any]?
+    /// The original JSON used to populate the Property object.
+    private var extraValues: [String: JSONValue]
 
     // MARK: - Initialization
 
     internal init(name: String, dataType: String, description: String? = nil) {
-        self.name = name
         self.dataType = dataType
         self.description = description
+        self.name = name
+        self.extraValues = [:]
     }
 
-    internal required init(map: Map) throws {
-        name = try map.value(Keys.name.rawValue)
-        dataType = try map.value(Keys.dataType.rawValue)
-        description = try? map.value(Keys.description.rawValue)
+    internal required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: AnyCodingKey.self)
 
-        // save the original JSON data, minus the existing properties
-        let keysToExclude = Keys.all.map { $0.rawValue }
-        originalJSON = map.JSON.filter { key, _ in
-            !keysToExclude.contains(key)
-        }
+        dataType = try container.decode(String.self, forKey: AnyCodingKey(Keys.dataType.rawValue))
+        description = try container.decodeIfPresent(String.self, forKey: AnyCodingKey(Keys.description.rawValue))
+        name = try container.decode(String.self, forKey: AnyCodingKey(Keys.name.rawValue))
+        extraValues = try container.decodeExtras(excluding: Keys.all)
     }
 
-    // MARK: - Mappable
+    // MARK: - Encodable
 
-    internal func mapping(map: Map) {
-        // map the original json data
-        originalJSON?.forEach { key, value in
-            value >>> map[key]
-        }
+    internal func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: AnyCodingKey.self)
 
-        name >>> map[Keys.name.rawValue]
-        dataType >>> map[Keys.dataType.rawValue]
-        description >>> map[Keys.description.rawValue]
-
-        isCollection >>> map[Keys.isCollection.rawValue]
-        isOptional >>> map[Keys.isOptional.rawValue]
-        rawDataType >>> map[Keys.rawDataType.rawValue]
+        try container.encode(dataType, forKey: AnyCodingKey(Keys.dataType.rawValue))
+        try container.encodeIfPresent(description, forKey: AnyCodingKey(Keys.description.rawValue))
+        try container.encode(isCollection, forKey: AnyCodingKey(Keys.isCollection.rawValue))
+        try container.encode(isOptional, forKey: AnyCodingKey(Keys.isOptional.rawValue))
+        try container.encode(name, forKey: AnyCodingKey(Keys.name.rawValue))
+        try container.encode(rawDataType, forKey: AnyCodingKey(Keys.rawDataType.rawValue))
+        try container.encodeExtras(extraValues)
     }
 
 }

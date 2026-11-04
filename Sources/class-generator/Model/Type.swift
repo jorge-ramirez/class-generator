@@ -1,7 +1,6 @@
 import Foundation
-import ObjectMapper
 
-internal enum Type: String {
+internal enum Type: String, Codable {
     case `class`
     case `enum`
 }

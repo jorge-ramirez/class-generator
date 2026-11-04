@@ -1,5 +1,4 @@
 import Foundation
-import ObjectMapper
 
 internal class Enum: DataType {
 
@@ -10,7 +9,7 @@ internal class Enum: DataType {
     internal var dataType: String
 
     /// An array of the enum's allowed values.
-    internal let values: [Value]
+    internal private(set) var values: [Value]
 
     // MARK: - Private Enums
 
@@ -18,68 +17,50 @@ internal class Enum: DataType {
         case dataType
         case values
 
-        static let all: [Keys] = [.dataType, .values]
+        static let all: Set<String> = ["dataType", "name", "type", "values"]
     }
 
     // MARK: - Private Properties
 
-    /// The original JSON used to populate the Propery object.
-    private var originalJSON: [String: Any]?
+    /// The original JSON used to populate the Enum object.
+    private var extraValues: [String: JSONValue]
 
     // MARK: - Initialization
 
     internal init(name: String, dataType: String, values: [Value]) {
         self.dataType = dataType
+        self.extraValues = [:]
         self.values = values
 
         super.init(name: name, type: .enum)
     }
 
-    internal required init(map: Map) throws {
-        dataType = try map.value(Keys.dataType.rawValue)
-        values = try Enum.extractValues(map: map)
+    internal required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: AnyCodingKey.self)
 
-        // save the original JSON data, minus the existing properties
-        let keysToExclude = Keys.all.map { $0.rawValue }
-        originalJSON = map.JSON.filter { key, _ in
-            !keysToExclude.contains(key)
-        }
+        dataType = try container.decode(String.self, forKey: AnyCodingKey(Keys.dataType.rawValue))
+        values = try container.decode([Value].self, forKey: AnyCodingKey(Keys.values.rawValue))
+        extraValues = try container.decodeExtras(excluding: Keys.all)
 
-        try super.init(map: map)
+        try super.init(from: decoder)
     }
 
-    // MARK: - Mappable
+    // MARK: - Public Methods
 
-    internal override func mapping(map: Map) {
-        // map the original json data
-        originalJSON?.forEach { key, value in
-            value >>> map[key]
-        }
-
-        super.mapping(map: map)
-
-        dataType >>> map[Keys.dataType.rawValue]
-        values >>> map[Keys.values.rawValue]
+    internal func alphabetizeValues() {
+        values.sort { $0.name.compare($1.name, options: .caseInsensitive) == .orderedAscending }
     }
 
-    // MARK: - Private Methods
+    // MARK: - Encodable
 
-    private class func extractValues(map: Map) throws -> [Value] {
-        var values: [Value] = try map.value(Keys.values.rawValue)
+    internal override func encode(to encoder: Encoder) throws {
+        try super.encode(to: encoder)
 
-        if shouldAlphabetizeValues(map: map) {
-            values.sort { $0.name.compare($1.name, options: .caseInsensitive) == .orderedAscending }
-        }
+        var container = encoder.container(keyedBy: AnyCodingKey.self)
 
-        return values
-    }
-
-    private class func shouldAlphabetizeValues(map: Map) -> Bool {
-        guard let context = map.context as? MappingContext else {
-            return false
-        }
-
-        return context.alphabetizeEnumValues
+        try container.encode(dataType, forKey: AnyCodingKey(Keys.dataType.rawValue))
+        try container.encode(values, forKey: AnyCodingKey(Keys.values.rawValue))
+        try container.encodeExtras(extraValues)
     }
 
 }
