@@ -1,6 +1,7 @@
 # class-generator
 
 [![CI](https://github.com/jorge-ramirez/class-generator/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/jorge-ramirez/class-generator/actions/workflows/ci.yml)
+[![Release](https://github.com/jorge-ramirez/class-generator/actions/workflows/release.yml/badge.svg)](https://github.com/jorge-ramirez/class-generator/actions/workflows/release.yml)
 
 `class-generator` is a macOS command line tool which generates classes based on JSON files used to describe the classes and their properties.  It was created to help reduce the manual process of creating mapper classes used in REST service calls in iOS and macOS apps.  Since it is template based, it can be used to generate classes for any language.
 
@@ -337,9 +338,28 @@ The output directory must exist and be empty unless `--force`/`--overwrite` is p
 ## Binary Installation
 
 - Download the latest release archive from the [releases](https://github.com/jorge-ramirez/class-generator/releases/latest) page.
+- Verify the checksum (optional): `shasum -a 256 -c class-generator-*.zip.sha256`
 - Unzip the file.
 - Copy the `class-generator` binary to somewhere in your `PATH` (for example `/usr/local/bin`).
 - Run the commands as shown in the examples above.
+
+The release binary is universal (`arm64` and `x86_64`) and is not notarized. If macOS blocks the first run, remove the quarantine attribute (`xattr -d com.apple.quarantine /usr/local/bin/class-generator`) or allow it under System Settings → Privacy & Security.
+
+## Releases
+
+Releases are published from version tags. `Version.current` in `Sources/class-generator/Version.swift` is the single source of truth for the version number, and the release workflow refuses to publish a tag that does not match it.
+
+1. Update `Version.current` to the new version and commit it to `master`.
+2. Push a matching tag:
+
+```bash
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+The `Release` workflow then runs the test suite, builds a universal `arm64`/`x86_64` binary, and publishes a versioned zip archive and SHA-256 checksum to the GitHub release.
+
+To build and package a release locally, run `Scripts/package-release.sh`. The archive is written to `dist/`. `create-release-archive.sh` is a convenience wrapper that writes the archive to the Desktop and reveals it in Finder.
 
 ## Building from Source
 

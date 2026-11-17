@@ -1,31 +1,26 @@
 #!/bin/bash
 
 ###################################################################################################
-# Script configuration
+# Builds the release archive on the Desktop and reveals it in Finder.
+#
+# This is a convenience wrapper around Scripts/package-release.sh. Official releases are published
+# by the Release GitHub Actions workflow when a version tag is pushed.
 ###################################################################################################
 
 set -o nounset # exit on uninitialized variables
 set -o errexit # exit for any non-true return values
+set -o pipefail
 
 ###################################################################################################
 # Variables
 ###################################################################################################
 
-PROJECT_NAME="class-generator"
-PROJECT_PATH="$( cd "$(dirname "$0")" ; pwd -P )"
-BUILD_DIR_PATH="$PROJECT_PATH/.build/release"
-ZIP_FILE_PATH="$HOME/Desktop/$PROJECT_NAME.zip"
+PROJECT_PATH="$(cd "$(dirname "$0")" && pwd)"
 
 ###################################################################################################
 # Main script
 ###################################################################################################
 
-# build the executable
-swift build --configuration release -Xswiftc -static-stdlib
+ARCHIVE_PATH="$(DIST_DIR="$HOME/Desktop" "$PROJECT_PATH/Scripts/package-release.sh")"
 
-# zip the executable
-cd "$BUILD_DIR_PATH"
-zip "$ZIP_FILE_PATH" "$PROJECT_NAME"
-
-# reveal the zip file in finder
-open -R "$ZIP_FILE_PATH"
+open -R "$ARCHIVE_PATH"

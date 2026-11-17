@@ -7,7 +7,7 @@ internal struct ClassGeneratorCommand: ParsableCommand {
     internal static let configuration: CommandConfiguration = CommandConfiguration(
         commandName: "class-generator",
         abstract: "class-generator - Generate classes from JSON schemas",
-        version: "1.0.9",
+        version: Version.current,
         subcommands: [GenerateCommand.self])
 
 }
