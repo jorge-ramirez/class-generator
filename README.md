@@ -294,19 +294,35 @@ This command will generate a class file for each class represented in the JSON s
 ```
 > class-generator generate --help
 
-USAGE: class-generator generate <schemas-directory-path> <template-file-path> [options]
+USAGE: class-generator generate <schemas-directory-path> <template-file-path> [--alphabetize-enum-values] [--alphabetize-properties] [--output-directory-path <output-directory-path>] [--force] [--open-output] [--plugins-directory-path <plugins-directory-path>]
 
 ARGUMENTS:
-  <schemas-directory-path>    The directory containing the JSON schema files.
-  <template-file-path>        The template file used to generate the output files.
+  <schemas-directory-path>
+                          The directory containing the JSON schema files.
+  <template-file-path>    The template file used to generate the output files.
 
 OPTIONS:
-  --alphabetize-enum-values             The generated enum values will be listed alphabetical order.
-  --alphabetize-properties              The generated class properties will be listed alphabetical order.
-  --output-directory-path <value>       The output directory where all generated files will be saved to.  A temporary directory will be used if none is provided.
-  --plugins-directory-path <value>      A directory containing plugins which will be loaded at runtime.
-  -h, --help                            Show help information.
+  --alphabetize-enum-values
+                          The generated enum values will be listed alphabetical
+                          order.
+  --alphabetize-properties
+                          The generated class properties will be listed
+                          alphabetical order.
+  --output-directory-path <output-directory-path>
+                          The output directory where all generated files will
+                          be saved to. A temporary directory will be used if
+                          none is provided.
+  --force, --overwrite    Replace the output directory contents if it is not
+                          empty.
+  --open-output           Open the output directory in Finder after generation.
+  --plugins-directory-path <plugins-directory-path>
+                          A directory containing plugins which will be loaded
+                          at runtime.
+  --version               Show the version.
+  -h, --help              Show help information.
 ```
+
+The output directory must exist and be empty unless `--force`/`--overwrite` is provided. Generation is atomic: files are written to a staging directory and the output directory is replaced only after every file has been generated successfully. Use `--open-output` to reveal the output directory in Finder after generation.
 
 #### Example
 

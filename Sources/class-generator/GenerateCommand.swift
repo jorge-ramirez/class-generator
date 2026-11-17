@@ -32,8 +32,20 @@ internal struct GenerateCommand: ParsableCommand {
 
     @Option(
         name: .customLong("output-directory-path"),
-        help: "The output directory where all generated files will be saved to.")
+        help:
+            "The output directory where all generated files will be saved to. A temporary directory will be used if none is provided."
+    )
     internal var outputDirectoryPath: String?
+
+    @Flag(
+        name: [.customLong("force"), .customLong("overwrite")],
+        help: "Replace the output directory contents if it is not empty.")
+    internal var overwriteOutputDirectory: Bool = false
+
+    @Flag(
+        name: .customLong("open-output"),
+        help: "Open the output directory in Finder after generation.")
+    internal var openOutputDirectory: Bool = false
 
     @Option(
         name: .customLong("plugins-directory-path"),
@@ -49,6 +61,8 @@ internal struct GenerateCommand: ParsableCommand {
 
         generator.alphabetizeEnumValues = alphabetizeEnumValues
         generator.alphabetizeProperties = alphabetizeProperties
+        generator.openOutputDirectory = openOutputDirectory
+        generator.overwriteOutputDirectory = overwriteOutputDirectory
 
         if let outputDirectoryPath = outputDirectoryPath {
             generator.outputDirectoryPath = Path(outputDirectoryPath)

@@ -21,6 +21,6 @@ let package = Package(
             ]),
         .testTarget(
             name: "class-generatorTests",
-            dependencies: ["class-generator"]),
+            dependencies: ["class-generator", "PathKit"]),
     ]
 )

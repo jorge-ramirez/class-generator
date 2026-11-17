@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import JavaScriptCore
 import Logging
@@ -8,6 +7,7 @@ import Stencil
 internal enum ClassGeneratorError: Error {
     case duplicateDataTypeDefined(String)
     case failedToEncodeDataType(String)
+    case outputDirectoryContainsInput(String)
     case outputDirectoryDoesNotExist(String)
     case outputDirectoryIsNotADirectory(String)
     case outputDirectoryIsNotEmpty(String)
@@ -30,7 +30,9 @@ internal class ClassGenerator {
 
     internal var alphabetizeEnumValues: Bool
     internal var alphabetizeProperties: Bool
+    internal var openOutputDirectory: Bool
     internal var outputDirectoryPath: Path?
+    internal var overwriteOutputDirectory: Bool
     internal var pluginsDirectoryPath: Path?
 
     // MARK: - Private Properties
@@ -49,7 +51,9 @@ internal class ClassGenerator {
         self.alphabetizeProperties = false
         self.javaScriptContext = JSContext()
         self.logger = Logger(label: "class-generator")
+        self.openOutputDirectory = false
         self.outputDirectoryPath = nil
+        self.overwriteOutputDirectory = false
         self.pluginsDirectoryPath = nil
         self.preDefinedTypes = []
         self.schemasDirectoryPath = schemasDirectoryPath
@@ -87,10 +91,19 @@ internal class ClassGenerator {
         let templateLoader = FileSystemLoader(paths: [templateDirectoryPath])
         let templateEnvironment = Environment(loader: templateLoader, extensions: [templateExtension])
 
-        // generate a data type file for each data type
+        // generate all output files in a staging directory so the final output is only
+        // replaced once every file has been generated successfully
+        let stagingDirectoryPath = try createStagingDirectory(for: outputDirectoryPath)
+        var outputDirectoryWasReplaced = false
+        defer {
+            if !outputDirectoryWasReplaced {
+                try? stagingDirectoryPath.delete()
+            }
+        }
+
         for dataType in dataTypes {
             let outFileName = dataType.name + "." + templateFileExtension
-            let outputFilePath = outputDirectoryPath + Path(outFileName)
+            let outputFilePath = stagingDirectoryPath + Path(outFileName)
             logger.info("Generating output file: \(outFileName)")
 
             do {
@@ -103,8 +116,12 @@ internal class ClassGenerator {
             }
         }
 
-        // open the output directory
-        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: outputDirectoryPath.absolute().string)
+        try replaceOutputDirectory(at: outputDirectoryPath, with: stagingDirectoryPath)
+        outputDirectoryWasReplaced = true
+
+        if openOutputDirectory {
+            openOutputDirectory(at: outputDirectoryPath)
+        }
     }
 
     // MARK: - Private Methods
@@ -118,6 +135,33 @@ internal class ClassGenerator {
         outputDirectoryPath = tempDirectory
 
         logger.info("Created temporary output directory: \(tempDirectory.absolute().string)")
+    }
+
+    private func createStagingDirectory(for outputDirectoryPath: Path) throws -> Path {
+        let stagingDirectoryPath = outputDirectoryPath.parent() + Path(".class-generator-\(UUID().uuidString)")
+        try stagingDirectoryPath.mkdir()
+
+        return stagingDirectoryPath
+    }
+
+    private func openOutputDirectory(at outputDirectoryPath: Path) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = [outputDirectoryPath.absolute().string]
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            logger.warning("Could not open the output directory: \(error.localizedDescription)")
+        }
+    }
+
+    private func replaceOutputDirectory(at outputDirectoryPath: Path, with stagingDirectoryPath: Path) throws {
+        let outputURL = URL(fileURLWithPath: outputDirectoryPath.absolute().string, isDirectory: true)
+        let stagingURL = URL(fileURLWithPath: stagingDirectoryPath.absolute().string, isDirectory: true)
+
+        _ = try FileManager.default.replaceItemAt(outputURL, withItemAt: stagingURL)
     }
 
     private func parseAllDataTypes() throws -> [DataType] {
@@ -239,11 +283,42 @@ internal class ClassGenerator {
             throw ClassGeneratorError.outputDirectoryIsNotADirectory(absolutePath)
         }
 
-        // ensure the output directory is empty
-        guard try outputDirectoryPath.children().isEmpty else {
+        try validateOutputDirectoryDoesNotContainInput(outputDirectoryPath)
+
+        // ensure the output directory is empty unless overwriting was requested
+        if !overwriteOutputDirectory, try !outputDirectoryPath.children().isEmpty {
             logger.error("The output directory specified is not empty: \(absolutePath)")
             throw ClassGeneratorError.outputDirectoryIsNotEmpty(absolutePath)
         }
+    }
+
+    private func validateOutputDirectoryDoesNotContainInput(_ outputDirectoryPath: Path) throws {
+        var inputPaths: [Path] = [schemasDirectoryPath, templateFilePath]
+
+        if let pluginsDirectoryPath = pluginsDirectoryPath {
+            inputPaths.append(pluginsDirectoryPath)
+        }
+
+        for inputPath in inputPaths where isAncestor(outputDirectoryPath, of: inputPath) {
+            let absolutePath = inputPath.absolute().string
+            logger.error("The output directory must not contain an input path: \(absolutePath)")
+            throw ClassGeneratorError.outputDirectoryContainsInput(absolutePath)
+        }
+    }
+
+    private func isAncestor(_ ancestor: Path, of descendant: Path) -> Bool {
+        let ancestorComponents = resolvedPathComponents(ancestor)
+        let descendantComponents = resolvedPathComponents(descendant)
+
+        guard ancestorComponents.count <= descendantComponents.count else {
+            return false
+        }
+
+        return Array(descendantComponents.prefix(ancestorComponents.count)) == ancestorComponents
+    }
+
+    private func resolvedPathComponents(_ path: Path) -> [String] {
+        URL(fileURLWithPath: path.absolute().string).resolvingSymlinksInPath().pathComponents
     }
 
     private func validatePaths() throws {
