@@ -41,10 +41,18 @@ CHECKSUM_PATH="$ARCHIVE_PATH.sha256"
 # build a universal release binary (Apple Silicon and Intel)
 swift build --package-path "$PROJECT_PATH" --configuration release --arch arm64 --arch x86_64
 
+BIN_DIR_PATH="$(swift build --package-path "$PROJECT_PATH" --configuration release --arch arm64 --arch x86_64 --show-bin-path)"
+BINARY_PATH="$BIN_DIR_PATH/$PROJECT_NAME"
+
+if [[ ! -f "$BINARY_PATH" ]]; then
+    echo "error: expected release binary at $BINARY_PATH" >&2
+    exit 1
+fi
+
 # stage the archive contents
 rm -rf "$ARCHIVE_DIR_PATH" "$ARCHIVE_PATH" "$CHECKSUM_PATH"
 mkdir -p "$ARCHIVE_DIR_PATH"
-cp "$PROJECT_PATH/.build/release/$PROJECT_NAME" "$ARCHIVE_DIR_PATH/"
+cp "$BINARY_PATH" "$ARCHIVE_DIR_PATH/"
 cp "$PROJECT_PATH/LICENSE" "$PROJECT_PATH/README.md" "$ARCHIVE_DIR_PATH/"
 
 # create the archive and its checksum
